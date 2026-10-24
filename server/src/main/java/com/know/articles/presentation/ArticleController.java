@@ -1,6 +1,14 @@
 package com.know.articles.presentation;
 
 import com.know.articles.application.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -8,19 +16,106 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/articles")
+@RequestMapping(value = "/api/v1/articles", produces = "application/json")
+@Tag(name = "Articles")
+@ApiResponses({
+  @ApiResponse(
+      responseCode = "400",
+      description = "Invalid request or cursor.",
+      content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+  @ApiResponse(
+      responseCode = "401",
+      description = "Sign-in required.",
+      content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+  @ApiResponse(
+      responseCode = "500",
+      description = "Unexpected failure; hash collisions use URL_HASH_COLLISION.",
+      content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+})
 @RequiredArgsConstructor
 public class ArticleController {
   private final ArticleCommands commands;
   private final ArticleQueries queries;
   private final ArticleApiMapper mapper;
+  private final ArticleCursor cursors;
+
+  @GetMapping
+  @Operation(
+      operationId = "listArticles",
+      summary = "List saved article summaries",
+      description =
+          "Newest first by savedAt descending, then UUID descending. No HTML or total count. Send nextCursor unchanged for Load more; null means the end. A cursor grants no account access.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Owned summaries and the next bookmark.",
+      content = @Content(schema = @Schema(implementation = ArticlePageResponse.class)))
+  public ArticlePageResponse list(
+      @Parameter(
+              schema =
+                  @Schema(
+                      type = "integer",
+                      format = "int32",
+                      minimum = "1",
+                      maximum = "100",
+                      defaultValue = "20"))
+          @RequestParam(defaultValue = "20")
+          int limit,
+      @Parameter(
+              description = "Opaque bookmark from the preceding page.",
+              schema = @Schema(maxLength = 256))
+          @RequestParam(required = false)
+          String cursor) {
+    var batch = queries.list(cursors.decode(cursor), limit);
+    return new ArticlePageResponse(
+        batch.items().stream().map(mapper::toResponse).toList(),
+        cursors.encode(batch.nextPosition()));
+  }
 
   @GetMapping("/{id}")
+  @Operation(
+      operationId = "getArticle",
+      summary = "Read an owned article",
+      description = "Returns sanitized HTML, or null content for a link-only save.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Owned article.",
+        content = @Content(schema = @Schema(implementation = ArticleResponse.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Missing article or another account owns it; same response.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+  })
   public ArticleResponse detail(@PathVariable UUID id) {
     return mapper.toResponse(queries.detail(id));
   }
 
-  @PostMapping
+  @PostMapping(consumes = "application/json")
+  @Operation(
+      operationId = "saveArticle",
+      summary = "Save an article",
+      description =
+          "Exact URL matching within the current account. Automatically enrich missing content; never overwrite saved text. Configurable content limit defaults to 4 MiB UTF-8 on input and sanitized output; title limit defaults to 1000 Unicode code points. No truncation. Duplicate content requires explicit PATCH confirmation.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "CREATED; Location points to the saved article.",
+        headers = @Header(name = "Location", schema = @Schema(type = "string")),
+        content = @Content(schema = @Schema(implementation = SaveArticleResponse.class))),
+    @ApiResponse(
+        responseCode = "200",
+        description = "ENRICHED missing content or UNCHANGED existing save.",
+        content = @Content(schema = @Schema(implementation = SaveArticleResponse.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description =
+            "DUPLICATE_URL; existingArticleId identifies the saved article. Nothing overwritten.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "413",
+        description = "CONTENT_TOO_LARGE; nothing saved.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+  })
   public ResponseEntity<SaveArticleResponse> save(@RequestBody SaveArticleRequest request) {
     var result = commands.save(mapper.toCommand(request));
     var response = mapper.toResponse(result);
@@ -30,7 +125,30 @@ public class ArticleController {
         : ResponseEntity.ok(response);
   }
 
-  @PatchMapping("/{id}")
+  @PatchMapping(value = "/{id}", consumes = "application/json")
+  @Operation(
+      operationId = "updateArticle",
+      summary = "Explicitly update an article",
+      description =
+          "Send the version read previously and title and/or content. Omitted fields stay unchanged. Null/blank content, URL changes and unknown fields are rejected. Version increments only for actual changes; no automatic conflict retry. The same configurable title/content limits apply.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Current article, including version.",
+        content = @Content(schema = @Schema(implementation = ArticleResponse.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Missing article or another account owns it; same response.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "VERSION_CONFLICT; reload before another explicit update.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "413",
+        description = "CONTENT_TOO_LARGE; no changes committed.",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+  })
   public ArticleResponse update(@PathVariable UUID id, @RequestBody UpdateArticleRequest request) {
     return mapper.toResponse(commands.update(id, mapper.toCommand(request)));
   }

@@ -12,9 +12,14 @@ if ($IsWindows -or $env:OS -eq 'Windows_NT') {
     $env:JAVA_TOOL_OPTIONS = (($env:JAVA_TOOL_OPTIONS + ' -Djdk.net.unixdomain.tmpdir=' + $socketDirectory).Trim())
 }
 Push-Location $PSScriptRoot
+$savedErrorAction = $ErrorActionPreference
 try {
+    $ErrorActionPreference = 'Continue'
     if ($UnitOnly) { & .\gradlew.bat spotlessCheck test compileIntegrationTestJava bootJar }
     else { & .\gradlew.bat check bootJar }
     if ($LASTEXITCODE -ne 0) { throw "Backend verification failed (exit $LASTEXITCODE)." }
 }
-finally { Pop-Location }
+finally {
+    $ErrorActionPreference = $savedErrorAction
+    Pop-Location
+}

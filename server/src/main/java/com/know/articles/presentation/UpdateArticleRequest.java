@@ -1,10 +1,18 @@
 package com.know.articles.presentation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Map;
 import java.util.Set;
 
-public record UpdateArticleRequest(Long version, String title, String content) {
+@Schema(
+    minProperties = 2,
+    requiredProperties = {"version"},
+    additionalProperties = Schema.AdditionalPropertiesValue.FALSE,
+    description =
+        "Supply title and/or content; omission preserves the stored value. Null values and URL changes are rejected.")
+public record UpdateArticleRequest(
+    @Schema(minimum = "0") Long version, String title, String content) {
   @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
   public static UpdateArticleRequest fromJson(Map<String, Object> fields) {
     if (!Set.of("version", "title", "content").containsAll(fields.keySet())) {

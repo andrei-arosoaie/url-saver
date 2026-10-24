@@ -3,8 +3,7 @@ package com.know.articles.presentation;
 import static org.assertj.core.api.Assertions.*;
 
 import com.know.articles.infrastructure.config.ArticleProperties;
-import jakarta.servlet.Filter;
-import jakarta.servlet.http.HttpServletRequest;
+import com.know.support.BackendIntegrationSupport;
 import java.net.URI;
 import java.net.http.*;
 import java.time.Instant;
@@ -13,59 +12,13 @@ import java.util.concurrent.*;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.*;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-@Testcontainers
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = "spring.config.location=classpath:application-integration.yml")
-@Import(ArticleFlowsIT.AuthenticationFixture.class)
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-class ArticleFlowsIT {
-  @Container
-  static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.11-alpine");
-
-  @DynamicPropertySource
-  static void database(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-    registry.add("spring.datasource.username", POSTGRES::getUsername);
-    registry.add("spring.datasource.password", POSTGRES::getPassword);
-  }
-
-  @TestConfiguration
-  static class AuthenticationFixture {
-    @Bean
-    Filter fixtureAuthentication() {
-      return (request, response, chain) -> {
-        var context = SecurityContextHolder.createEmptyContext();
-        var account = ((HttpServletRequest) request).getHeader("X-Test-Account");
-        if (account != null)
-          context.setAuthentication(
-              UsernamePasswordAuthenticationToken.authenticated(
-                  UUID.fromString(account), null, List.of()));
-        SecurityContextHolder.setContext(context);
-        try {
-          chain.doFilter(request, response);
-        } finally {
-          SecurityContextHolder.clearContext();
-        }
-      };
-    }
-  }
-
+class ArticleFlowsIT extends BackendIntegrationSupport {
   private final JdbcTemplate jdbc;
   private final Environment environment;
   private final ArticleProperties properties;

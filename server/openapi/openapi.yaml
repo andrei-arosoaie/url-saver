@@ -1,0 +1,395 @@
+openapi: 3.1.0
+info:
+  description: "Save, update and read account-owned articles. Real authentication\
+    \ is implemented in the security checkpoint."
+  title: Know Article API
+  version: v1
+servers:
+- url: /
+security:
+- knowBearer: []
+paths:
+  /api/v1/articles:
+    get:
+      description: "Newest first by savedAt descending, then UUID descending. No HTML\
+        \ or total count. Send nextCursor unchanged for Load more; null means the\
+        \ end. A cursor grants no account access."
+      operationId: listArticles
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - description: Opaque bookmark from the preceding page.
+        in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 256
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticlePageResponse"
+          description: Owned summaries and the next bookmark.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Sign-in required.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; hash collisions use URL_HASH_COLLISION.
+      summary: List saved article summaries
+      tags:
+      - Articles
+    post:
+      description: Exact URL matching within the current account. Automatically enrich
+        missing content; never overwrite saved text. Configurable content limit defaults
+        to 4 MiB UTF-8 on input and sanitized output; title limit defaults to 1000
+        Unicode code points. No truncation. Duplicate content requires explicit PATCH
+        confirmation.
+      operationId: saveArticle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveArticleRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveArticleResponse"
+          description: ENRICHED missing content or UNCHANGED existing save.
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveArticleResponse"
+          description: CREATED; Location points to the saved article.
+          headers:
+            Location:
+              schema:
+                type: string
+              style: simple
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Sign-in required.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: DUPLICATE_URL; existingArticleId identifies the saved article.
+            Nothing overwritten.
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: CONTENT_TOO_LARGE; nothing saved.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; hash collisions use URL_HASH_COLLISION.
+      summary: Save an article
+      tags:
+      - Articles
+  /api/v1/articles/{id}:
+    get:
+      description: "Returns sanitized HTML, or null content for a link-only save."
+      operationId: getArticle
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+          description: Owned article.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Sign-in required.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Missing article or another account owns it; same response.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; hash collisions use URL_HASH_COLLISION.
+      summary: Read an owned article
+      tags:
+      - Articles
+    patch:
+      description: "Send the version read previously and title and/or content. Omitted\
+        \ fields stay unchanged. Null/blank content, URL changes and unknown fields\
+        \ are rejected. Version increments only for actual changes; no automatic conflict\
+        \ retry. The same configurable title/content limits apply."
+      operationId: updateArticle
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArticleRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+          description: "Current article, including version."
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Sign-in required.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Missing article or another account owns it; same response.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT; reload before another explicit update.
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: CONTENT_TOO_LARGE; no changes committed.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; hash collisions use URL_HASH_COLLISION.
+      summary: Explicitly update an article
+      tags:
+      - Articles
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      description: Spring Boot default error JSON with optional application reason
+        and duplicate article ID.
+      properties:
+        error:
+          type: string
+        existingArticleId:
+          type: string
+          format: uuid
+          description: Present only for DUPLICATE_URL.
+        message:
+          type: string
+        path:
+          type: string
+        reason:
+          type: string
+          description: "INVALID_REQUEST, UNAUTHENTICATED, ARTICLE_NOT_FOUND, DUPLICATE_URL,\
+            \ VERSION_CONFLICT, CONTENT_TOO_LARGE or URL_HASH_COLLISION."
+        status:
+          type: integer
+          format: int32
+        timestamp:
+          type: string
+          format: date-time
+      required:
+      - error
+      - path
+      - status
+      - timestamp
+    ArticlePageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSummaryResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+          description: Opaque bookmark for Load more; null at the end.
+      required:
+      - items
+      - nextCursor
+    ArticleResponse:
+      type: object
+      properties:
+        content:
+          type:
+          - string
+          - "null"
+          description: Sanitized article HTML; null means link-only.
+        id:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        url:
+          type: string
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - content
+      - id
+      - savedAt
+      - title
+      - url
+      - version
+    ArticleSummaryResponse:
+      type: object
+      properties:
+        hasContent:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        url:
+          type: string
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - hasContent
+      - id
+      - savedAt
+      - title
+      - url
+      - version
+    SaveArticleRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        content:
+          type:
+          - string
+          - "null"
+          description: Optional article HTML. Supply no content for a link-only save;
+            provided content must contain article text.
+        title:
+          type: string
+          description: Nonblank title; configurable maximum defaults to 1000 Unicode
+            code points.
+        url:
+          type: string
+          description: Exact absolute HTTP/HTTPS URL; surrounding whitespace is rejected.
+      required:
+      - title
+      - url
+    SaveArticleResponse:
+      type: object
+      properties:
+        article:
+          $ref: "#/components/schemas/ArticleResponse"
+        outcome:
+          type: string
+          enum:
+          - CREATED
+          - ENRICHED
+          - UNCHANGED
+      required:
+      - article
+      - outcome
+    UpdateArticleRequest:
+      type: object
+      additionalProperties: false
+      description: Supply title and/or content; omission preserves the stored value.
+        Null values and URL changes are rejected.
+      minProperties: 2
+      properties:
+        content:
+          type: string
+        title:
+          type: string
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - version
+  securitySchemes:
+    knowBearer:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http

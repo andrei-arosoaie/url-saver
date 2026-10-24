@@ -11,11 +11,12 @@ configurations.configureEach {
     exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
 }
 dependencies {
-    implementation platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    implementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     compileOnly platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     testImplementation platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.security:spring-security-core'
@@ -66,6 +67,32 @@ tasks.register('integrationTest', Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
     shouldRunAfter test
+    outputs.file(layout.buildDirectory.file('openapi/openapi.yaml'))
+}
+
+tasks.register('exportOpenApi', Copy) {
+    description = 'Exports Springdoc YAML from the real HTTP integration server to the checked-in contract.'
+    group = 'documentation'
+    dependsOn integrationTest
+    from layout.buildDirectory.file('openapi/openapi.yaml')
+    into 'openapi'
+}
+
+def generatedOpenApi = layout.buildDirectory.file('openapi/openapi.yaml')
+def committedOpenApi = layout.projectDirectory.file('openapi/openapi.yaml')
+tasks.register('verifyOpenApi') {
+    description = 'Fails if the checked-in OpenAPI YAML differs from the running backend.'
+    group = 'verification'
+    dependsOn integrationTest
+    inputs.file(generatedOpenApi)
+    inputs.file(committedOpenApi).optional()
+    doLast {
+        def generated = generatedOpenApi.get().asFile
+        def committed = committedOpenApi.asFile
+        if (!committed.exists() || generated.getText('UTF-8').replace('\r\n', '\n') != committed.getText('UTF-8').replace('\r\n', '\n')) {
+            throw new GradleException('OpenAPI contract drift: run ./gradlew exportOpenApi, review and commit server/openapi/openapi.yaml.')
+        }
+    }
 }
 
 tasks.register('verifyTestNames') {
@@ -88,7 +115,7 @@ tasks.register('verifyTestNames') {
 }
 tasks.withType(Test).configureEach { dependsOn 'verifyTestNames' }
 
-tasks.named('check') { dependsOn integrationTest }
+tasks.named('check') { dependsOn integrationTest, verifyOpenApi }
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-parameters']
     if (name == 'compileJava') {
