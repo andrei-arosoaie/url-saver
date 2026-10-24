@@ -1,0 +1,33 @@
+name: Server checks
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-checks.yml'
+  push:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+          cache: gradle
+      - name: Enable Gradle wrapper
+        run: chmod +x gradlew
+      - name: Verify formatting, architecture, unit tests, PostgreSQL integration and packaging
+        run: ./gradlew --no-daemon check bootJar

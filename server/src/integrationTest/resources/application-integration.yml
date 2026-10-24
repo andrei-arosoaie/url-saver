@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: know-integration-test
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+know:
+  articles:
+    max-content-bytes: 4194304
+    max-title-code-points: 1000

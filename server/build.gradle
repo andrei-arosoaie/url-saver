@@ -1,0 +1,108 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.2'
+    id 'com.diffplug.spotless' version '8.10.4'
+}
+group = 'com.know'
+version = '0.1.0-SNAPSHOT'
+java { toolchain { languageVersion = JavaLanguageVersion.of(27) } }
+repositories { mavenCentral() }
+configurations.configureEach {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+}
+dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    compileOnly platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    testImplementation platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.security:spring-security-core'
+    implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20261011.1'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+sourceSets {
+    integrationTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+    integrationTestCompileOnly.extendsFrom testCompileOnly
+    integrationTestAnnotationProcessor.extendsFrom testAnnotationProcessor
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    testLogging { events 'passed', 'skipped', 'failed'; exceptionFormat 'full' }
+}
+tasks.named('test', Test) {
+    include '**/*Test.class'
+}
+tasks.register('integrationTest', Test) {
+    include '**/IT*.class'
+    description = 'Runs PostgreSQL Testcontainers integration tests; Docker is required.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+}
+
+tasks.register('verifyTestNames') {
+    description = 'Checks integration IT prefixes and regular Test suffixes.'
+    group = 'verification'
+    inputs.files(fileTree('src/test/java') {
+        include '**/*.java'
+    }, fileTree('src/integrationTest/java') {
+        include '**/*.java'
+    })
+    doLast { task ->
+        def invalid = task.inputs.files.files.findAll { source ->
+            def containsTests = source.getText('UTF-8') =~ /@(Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|Nested)\b/
+            if (!containsTests.find()) return false
+            def integration = source.path.replace('\\', '/').contains('/integrationTest/')
+            integration ? !source.name.startsWith('IT') : !source.name.endsWith('Test.java')
+        }
+        if (!invalid.empty) throw new GradleException('Invalid test names: ' + invalid*.name.join(', '))
+    }
+}
+tasks.withType(Test).configureEach { dependsOn 'verifyTestNames' }
+
+tasks.named('check') { dependsOn integrationTest }
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-parameters']
+    if (name == 'compileJava') {
+        options.compilerArgs += [
+            '-Amapstruct.defaultComponentModel=spring',
+            '-Amapstruct.unmappedTargetPolicy=ERROR'
+        ]
+    }
+}
+spotless {
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
+    java { target 'src/**/*.java'; googleJavaFormat('1.36.0') }
+    groovyGradle { target '*.gradle'; greclipse(); leadingTabsToSpaces(4) }
+    format('misc') {
+        target '*.md', 'src/**/*.yml', 'src/**/*.sql'; trimTrailingWhitespace(); endWithNewline()
+    }
+}
