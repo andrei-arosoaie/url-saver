@@ -15,3 +15,9 @@ Repeat full verification: .\server\verify-wsl.ps1. Refresh the reviewed contract
 Next checkpoint: Firefox extension client, then responsive webpage, then security. Clients and real security are not implemented. Startup target remains under five seconds to save-ready without first-save warm-up; deployment-like benchmarking has not yet been performed. No deployment or remote CI result is claimed.
 
 Toolchain: Spring Boot 4.1.2, Temurin Java 27+35, Gradle 9.8.2, PostgreSQL 17.11 Alpine, Spotless 8.10.4 / Google Java Format 1.36.0, MapStruct 1.6.3, ArchUnit 1.5.1, OWASP Java HTML Sanitizer 20261011.1, Springdoc 3.1.1. Other managed versions inherit Spring BOM.
+
+## Render preparation
+
+User requested deployment preparation. Added server/Dockerfile, an allowlisted build context, stable know-server.jar output, PORT binding, mounted Render secret-file example, DEPLOYMENT.md and a manual-only GHCR publish workflow. Runtime is Eclipse Temurin 27 Alpine JRE pinned by digest, UID/GID 10001; the image contains no source or build tools.
+
+Verified locally using Debian WSL Docker: all 38 backend tests and full build pass. The linux/amd64 image builds and passes a real PostgreSQL smoke check under 512 MiB / 1 CPU: required secret file, non-root JRE, custom PORT, Flyway migration, liveness, API 401 and disabled docs. This does not establish the save-ready startup benchmark. GitHub publishing, Render/Supabase configuration and deployment have not been executed.
