@@ -32,9 +32,9 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = "spring.config.location=classpath:application-integration.yml")
-@Import(ITArticleFlows.AuthenticationFixture.class)
+@Import(ArticleFlowsIT.AuthenticationFixture.class)
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-class ITArticleFlows {
+class ArticleFlowsIT {
   @Container
   static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.11-alpine");
 

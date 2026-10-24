@@ -60,7 +60,7 @@ tasks.named('test', Test) {
     include '**/*Test.class'
 }
 tasks.register('integrationTest', Test) {
-    include '**/IT*.class'
+    include '**/*IT.class'
     description = 'Runs PostgreSQL Testcontainers integration tests; Docker is required.'
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
@@ -69,7 +69,7 @@ tasks.register('integrationTest', Test) {
 }
 
 tasks.register('verifyTestNames') {
-    description = 'Checks integration IT prefixes and regular Test suffixes.'
+    description = 'Checks integration IT suffixes and regular Test suffixes.'
     group = 'verification'
     inputs.files(fileTree('src/test/java') {
         include '**/*.java'
@@ -81,7 +81,7 @@ tasks.register('verifyTestNames') {
             def containsTests = source.getText('UTF-8') =~ /@(Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|Nested)\b/
             if (!containsTests.find()) return false
             def integration = source.path.replace('\\', '/').contains('/integrationTest/')
-            integration ? !source.name.startsWith('IT') : !source.name.endsWith('Test.java')
+            integration ? !source.name.endsWith('IT.java') : !source.name.endsWith('Test.java')
         }
         if (!invalid.empty) throw new GradleException('Invalid test names: ' + invalid*.name.join(', '))
     }

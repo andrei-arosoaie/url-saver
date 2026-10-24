@@ -20,9 +20,9 @@ From the workspace root, run .\server\verify-wsl.ps1. It uses Debian_Recovered W
 - Unit/architecture tests: gradlew.bat test.
 - Integration suite: gradlew.bat integrationTest.
 
-ITArticleFlows sends real HTTP requests to a randomly bound server and verifies real PostgreSQL state. Complete flows cover create/read/update, duplicate/explicit update, enrichment, stale versions, ownership, validation, size rejection and concurrent saves/updates. Authentication fixtures exist only in integration-test sources. ITArticlePersistence supplies additional database coverage, not a substitute for complete flows. No H2 or Docker-dependent skips.
+ArticleFlowsIT sends real HTTP requests to a randomly bound server and verifies real PostgreSQL state. Complete flows cover create/read/update, duplicate/explicit update, enrichment, stale versions, ownership, validation, size rejection and concurrent saves/updates. Authentication fixtures exist only in integration-test sources. ArticlePersistenceIT supplies additional database coverage, not a substitute for complete flows. No H2 or Docker-dependent skips.
 
-Reports: build/reports/tests/test and build/reports/tests/integrationTest. Integration classes start with IT; unit classes end in Test; Gradle enforces both.
+Reports: build/reports/tests/test and build/reports/tests/integrationTest. Integration classes end with IT; unit classes end in Test; Gradle enforces both.
 
 ## Local configuration
 

@@ -26,7 +26,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
       "spring.main.web-application-type=none"
     })
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-class ITArticlePersistence {
+class ArticlePersistenceIT {
   @Container
   static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.11-alpine");
 
