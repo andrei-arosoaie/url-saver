@@ -3,6 +3,7 @@ package com.know.articles.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.*;
 
 import com.know.articles.application.*;
+import com.know.support.BackendIntegrationSupport;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.Instant;
 import java.util.UUID;
@@ -10,33 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@Testcontainers
-@SpringBootTest(
-    properties = {
-      "spring.config.location=classpath:application-integration.yml",
-      "spring.main.web-application-type=none"
-    })
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
-class ArticlePersistenceIT {
-  @Container
-  static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.11-alpine");
-
-  @DynamicPropertySource
-  static void database(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-    registry.add("spring.datasource.username", POSTGRES::getUsername);
-    registry.add("spring.datasource.password", POSTGRES::getPassword);
-  }
-
+class ArticlePersistenceIT extends BackendIntegrationSupport {
   private final JdbcTemplate jdbc;
   private final ArticleReader reader;
   private final EntityManagerFactory entityManagers;

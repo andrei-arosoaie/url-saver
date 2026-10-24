@@ -17,3 +17,5 @@ Next checkpoint: list/cursor endpoint, remaining retrieval flows, OpenAPI export
 Toolchain: Spring Boot 4.1.2, Temurin Java 27+35, Gradle 9.8.2, PostgreSQL 17.11 Alpine, Spotless 8.10.4 / Google Java Format 1.36.0, MapStruct 1.6.3, ArchUnit 1.5.1; other managed versions inherit Spring BOM. Spring Security core supplies context only at this stage.
 
 Repeat from workspace root: .\server\verify-wsl.ps1. Test classes: IT suffix for integration; Test suffix for regular tests. Full-flow integration coverage is mandatory; repository tests alone never establish feature completion.
+
+All backend IT classes extend BackendIntegrationSupport: one cached Spring context, random-port HTTP server and JVM-scoped disposable PostgreSQL container. An inherited assertion verifies context identity across classes. Shared database fixtures reset between tests; a resource lock prevents parallel fixture resets. No per-class container shutdown or context eviction.

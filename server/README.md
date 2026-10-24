@@ -31,3 +31,5 @@ Set KNOW_LOCAL_DATABASE_PASSWORD for Docker Compose, then run docker compose up 
 Application records/ports stay separate from presentation records and infrastructure entities. MapStruct maps both boundaries; constructor injection only. Application transactions, explicit database queries, OSIV disabled, Flyway migrations and Hibernate validation. Only the minimal accounts table exists until security implementation.
 
 No deployment or external-service provisioning has been performed. Startup performance has not yet been benchmarked against the under-five-second save-ready target.
+
+All backend IT classes extend BackendIntegrationSupport: one cached Spring context, random-port HTTP server and JVM-scoped disposable PostgreSQL container. An inherited assertion verifies context identity across classes. Shared database fixtures reset between tests; a resource lock prevents parallel fixture resets. No per-class container shutdown or context eviction.
