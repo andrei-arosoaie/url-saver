@@ -26,6 +26,10 @@ logging:
     format:
       console: ecs
 know:
+  temporary-account:
+    # Temporary shared account for the current functionality-only iteration.
+    enabled: true
+    id: 00000000-0000-4000-8000-000000000001
   articles:
     max-content-bytes: 4194304
     max-title-code-points: 1000

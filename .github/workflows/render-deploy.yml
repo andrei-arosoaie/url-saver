@@ -1,0 +1,48 @@
+name: Deploy server to Render
+on:
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: Full Git commit SHA of an image already published by Publish server image
+        required: true
+        type: string
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: render-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify deployment orchestration without external requests
+        run: bash server/scripts/test-deploy-render.sh
+      - name: Validate image selection and deployment configuration
+        env:
+          IMAGE_SHA: ${{ inputs.image_sha }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+        run: |
+          [[ "$IMAGE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Provide a full lowercase 40-character commit SHA.' >&2; exit 1; }
+          [[ "$RENDER_SERVICE_ID" =~ ^srv-[a-z0-9]+$ ]] || { echo 'Set the production RENDER_SERVICE_ID variable.' >&2; exit 1; }
+          test -n "$RENDER_API_KEY" || { echo 'Set the production RENDER_API_KEY secret.' >&2; exit 1; }
+      - name: Verify the private GHCR image exists
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_SHA: ${{ inputs.image_sha }}
+        run: |
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker manifest inspect "ghcr.io/${GITHUB_REPOSITORY,,}-server:${IMAGE_SHA}" >/dev/null
+      - name: Deploy selected image and verify health
+        env:
+          IMAGE_SHA: ${{ inputs.image_sha }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+        run: bash server/scripts/deploy-render.sh

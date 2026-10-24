@@ -60,8 +60,11 @@ until curl -fsS --max-time 2 "$address/actuator/health/liveness" 2>/dev/null | g
   if [ "$(docker inspect "$application" --format '{{.State.Running}}')" != true ]; then docker logs "$application"; exit 1; fi
   sleep 1
 done
-[ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/api/v1/articles")" = 401 ]
+[ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/api/v1/articles")" = 200 ]
+[ "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' --data '{"url":"https://example.test/image-smoke","title":"Image smoke article","content":"<p>Saved through the real container API.</p>"}' "$address/api/v1/articles")" = 201 ]
+curl -fsS "$address/api/v1/articles" | grep -q 'Image smoke article'
+[ "$(docker exec "$database" psql -U know -d know -Atc "select count(*) from articles where account_id='00000000-0000-4000-8000-000000000001' and content='<p>Saved through the real container API.</p>'")" = 1 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/v3/api-docs")" = 404 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/swagger-ui/index.html")" = 404 ]
 [ "$(docker exec "$database" psql -U know -d know -Atc 'select count(*) from flyway_schema_history where success')" = 1 ]
-echo 'Image smoke check passed: amd64, non-root, JRE-only, required mounted YAML, custom PORT, real PostgreSQL migration, app liveness, protected API and disabled docs.'
+echo 'Image smoke check passed: amd64, non-root, JRE-only, required mounted YAML, custom PORT, real PostgreSQL migration, liveness, temporary-account saving and persisted article content, disabled docs.'

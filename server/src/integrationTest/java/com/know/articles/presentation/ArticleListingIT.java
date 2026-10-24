@@ -131,7 +131,7 @@ class ArticleListingIT extends BackendIntegrationSupport {
   }
 
   @Test
-  void rejectsInvalidLimitsAndBookmarksAndRequiresAuthentication() throws Exception {
+  void rejectsInvalidLimitsAndBookmarksAndKeepsTemporaryAccountIsolated() throws Exception {
     for (var query :
         List.of(
             "?limit=0",
@@ -146,7 +146,9 @@ class ArticleListingIT extends BackendIntegrationSupport {
       assertThat(response.statusCode()).as(response.body()).isEqualTo(400);
       assertThat(body(response).get("reason").asText()).isEqualTo("INVALID_REQUEST");
     }
-    assertThat(get(null, "").statusCode()).isEqualTo(401);
+    var temporary = get(null, "");
+    assertThat(temporary.statusCode()).isEqualTo(200);
+    assertThat(json.readTree(temporary.body()).get("items").size()).isZero();
     assertThat(jdbc.queryForObject("select count(*) from articles", Integer.class)).isZero();
   }
 

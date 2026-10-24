@@ -1,0 +1,128 @@
+.root {
+  all: initial;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+  color: #182232;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+  color-scheme: light dark;
+}
+.circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid #b7c0cc;
+  background: #f7f9fc;
+  color: #263449;
+  box-shadow: 0 3px 16px #0003;
+  cursor: pointer;
+  font: 24px system-ui;
+}
+.circle:focus-visible,
+.panel button:focus-visible {
+  outline: 3px solid #835deb;
+  outline-offset: 3px;
+}
+.circle:disabled {
+  cursor: wait;
+}
+.success {
+  background: #168348;
+  color: white;
+  animation: confirmed 0.3s;
+}
+.saved {
+  background: #2464c4;
+  color: white;
+}
+.error {
+  background: #b62d38;
+  color: white;
+}
+@keyframes confirmed {
+  from {
+    background: #168348;
+  }
+  to {
+    background: #168348;
+  }
+}
+.panel {
+  box-sizing: border-box;
+  width: 310px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  border: 1px solid #bcc6d3;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 24px #0003;
+}
+.panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 750;
+  border-bottom: 1px solid #dbe1e9;
+  padding-bottom: 10px;
+}
+.panel small {
+  font-weight: 400;
+  color: #536078;
+}
+.panel header button {
+  margin-left: auto;
+}
+.panel p {
+  margin: 12px 0;
+}
+.panel button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid #bdc8d6;
+  border-radius: 6px;
+  background: #f3f6fb;
+  color: #182232;
+  padding: 7px 10px;
+  margin-right: 6px;
+}
+.panel header button {
+  border: 0;
+  padding: 0 4px;
+  font-size: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  .root {
+    color: #edf1f7;
+  }
+  .panel {
+    background: #202735;
+    border-color: #536078;
+  }
+  .panel small {
+    color: #b5c1d3;
+  }
+  .panel button {
+    background: #303b50;
+    color: #edf1f7;
+  }
+  .circle {
+    background: #303b50;
+    color: #edf1f7;
+  }
+  .circle.success {
+    background: #168348;
+  }
+  .circle.saved {
+    background: #2464c4;
+  }
+  .circle.error {
+    background: #b62d38;
+  }
+}

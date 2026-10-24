@@ -17,6 +17,8 @@ spring:
   flyway:
     enabled: true
 know:
+  temporary-account:
+    enabled: true
   articles:
     max-content-bytes: 4194304
     max-title-code-points: 1000
