@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!.dockerignore
+!build/
+build/*
+!build/libs/
+build/libs/*
+!build/libs/know-server.jar

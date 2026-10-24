@@ -116,6 +116,8 @@ tasks.register('verifyTestNames') {
 tasks.withType(Test).configureEach { dependsOn 'verifyTestNames' }
 
 tasks.named('check') { dependsOn integrationTest, verifyOpenApi }
+
+tasks.named('bootJar') { archiveFileName = 'know-server.jar' }
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-parameters']
     if (name == 'compileJava') {

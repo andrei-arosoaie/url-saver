@@ -31,6 +31,12 @@ The reviewed schema is openapi/openapi.yaml, exported from the real Springdoc HT
 
 Swagger UI and /v3/api-docs are disabled by default. Mounted local YAML can enable springdoc.api-docs.enabled and springdoc.swagger-ui.enabled. Integration tests enable both; no Spring profiles are introduced. Spring Boot BOM versions remain authoritative, including Jackson used by Springdoc.
 
+## Render image
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared Dockerfile, manual private-GHCR publishing workflow and Render Existing Image setup. The image is digest-pinned, runs as UID 10001, contains the JRE and application only, and reads mounted /etc/secrets/secrets.yml. PORT is supplied by Render; IDE use defaults to 8080.
+
+Local image verification: build the application with verify-wsl.ps1, then in Debian run docker build --platform linux/amd64 -t know-server:local . from server, followed by sh scripts/verify-image.sh know-server:local. No registry publish or Render deployment has been performed.
+
 ## Local configuration
 
 Set KNOW_LOCAL_DATABASE_PASSWORD for Docker Compose, then run docker compose up -d from server. Copy config/secrets.example.yml to config/secrets.yml and replace CHANGE_ME. Spring Boot uses mounted YAML, not the Compose bootstrap variable. Missing secrets.yml fails startup; secrets are never committed.

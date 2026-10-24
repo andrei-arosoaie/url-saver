@@ -1,0 +1,51 @@
+name: Publish server image
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '27'
+          cache: gradle
+      - name: Verify backend and build application
+        working-directory: server
+        run: sh ./gradlew --no-daemon check bootJar
+      - name: Build linux/amd64 runtime image
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-server:${GITHUB_SHA}"
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "$image" server
+          echo "tag=$image" >> "$GITHUB_OUTPUT"
+      - name: Verify packaged image with real PostgreSQL
+        working-directory: server
+        env:
+          IMAGE: ${{ steps.image.outputs.tag }}
+        run: sh scripts/verify-image.sh "$IMAGE"
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Publish commit-tagged image
+        env:
+          IMAGE: ${{ steps.image.outputs.tag }}
+        run: |
+          docker push "$IMAGE"
+          echo "Image: $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io
