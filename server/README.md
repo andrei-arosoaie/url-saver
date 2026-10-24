@@ -11,7 +11,7 @@ Spring Boot 4.1.2, Temurin Java 27, Gradle 9.8.2; PostgreSQL 17.11 Alpine for de
 - Sanitized HTML only: preserve article prose, remove executable markup and images. Configurable UTF-8 content and Unicode title limits; reject without truncation.
 - Flyway schema, per-account exact-URL SHA-256 uniqueness, database hash verification, transactional concurrency protection and version locking.
 
-All four article endpoints are implemented. Clients and real authentication come later. Runtime requests require an authenticated UUID principal from Spring Security context; no runtime fixture or bypass exists.
+All four article endpoints and the Firefox capture client are implemented. The responsive webpage and real authentication come later. See ../extension/firefox/README.md for client checks and current limitations. This functionality-only iteration enables one shared temporary account via know.temporary-account.enabled in application.yml. Unauthenticated requests use account 00000000-0000-4000-8000-000000000001; it is created automatically. Setting enabled=false restores the authentication requirement. An authenticated UUID principal still takes precedence.
 
 ## Verify
 
@@ -35,7 +35,7 @@ Swagger UI and /v3/api-docs are disabled by default. Mounted local YAML can enab
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared Dockerfile, manual private-GHCR publishing workflow and Render Existing Image setup. The image is digest-pinned, runs as UID 10001, contains the JRE and application only, and reads mounted /etc/secrets/secrets.yml. PORT is supplied by Render; IDE use defaults to 8080.
 
-Local image verification: build the application with verify-wsl.ps1, then in Debian run docker build --platform linux/amd64 -t know-server:local . from server, followed by sh scripts/verify-image.sh know-server:local. No registry publish or Render deployment has been performed.
+Local image verification: build the application with verify-wsl.ps1, then in Debian run docker build --platform linux/amd64 -t know-server:local . from server, followed by sh scripts/verify-image.sh know-server:local. A private GHCR image was subsequently published and a Render deployment attempted; the observed failure was database configuration.
 
 ## Local configuration
 
@@ -43,6 +43,6 @@ Set KNOW_LOCAL_DATABASE_PASSWORD for Docker Compose, then run docker compose up 
 
 Application records/ports stay separate from presentation records and infrastructure entities. MapStruct maps both boundaries; constructor injection only. Application transactions, explicit database queries, OSIV disabled, Flyway migrations and Hibernate validation. Only the minimal accounts table exists until security implementation.
 
-No deployment or external-service provisioning has been performed. Startup performance has not yet been benchmarked against the under-five-second save-ready target.
+Local startup with Supabase succeeded in 11.6 seconds and liveness returned UP; the process was stopped as requested. This exceeds the under-five-second target and is not a save-ready benchmark.
 
 All backend IT classes extend BackendIntegrationSupport: one cached Spring context, random-port HTTP server and JVM-scoped disposable PostgreSQL container. An inherited assertion verifies context identity across classes. Shared database fixtures reset between tests; a resource lock prevents parallel fixture resets. No per-class container shutdown or context eviction.

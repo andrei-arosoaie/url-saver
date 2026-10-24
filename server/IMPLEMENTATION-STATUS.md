@@ -1,23 +1,16 @@
-# Backend listing and OpenAPI — review checkpoint
+# Firefox extension and temporary-account saving
 
-Backend foundation and save/update checkpoints accepted. Listing/OpenAPI is the current review checkpoint; do not start clients until user review.
+Current iteration: article saving without authentication, using one explicitly approved shared temporary account. Google sign-in remains out of scope.
 
-All four article endpoints are implemented: POST capture/reuse/enrichment, PATCH explicit versioned update, GET owned detail, and GET cursor-paginated summaries. Listing defaults to 20 (maximum 100), newest first by saved_at DESC and UUID DESC. Fetch one extra summary to determine nextCursor; no total count or article HTML in list queries/responses. Bookmarks are opaque, strictly validated and never grant account access.
+- All four article endpoints are implemented: save, explicit versioned update, read, and cursor-paginated list.
+- know.temporary-account.enabled is true in application.yml. Account UUID: 00000000-0000-4000-8000-000000000001. It is created automatically; the server assigns ownership. All unauthenticated installations share these articles. Setting enabled=false restores the authentication requirement; authenticated accounts take precedence.
+- Temporary-account provisioning uses its own transaction so read-only article operations can safely resolve the account. Existing account data is never overwritten.
+- The Firefox extension captures URL/title/Readability HTML, sends saves without requiring a token, confirms results, prompts for duplicates and uses versioned explicit updates. No persistent capture queue.
 
-Springdoc 3.1.1 exports the running backend contract to build/openapi/openapi.yaml. The reviewed contract is server/openapi/openapi.yaml. Gradle verifyOpenApi compares them and is part of check/CI; exportOpenApi deliberately updates the reviewed file. Swagger UI/API docs are disabled by default and enabled in integration tests. Spring Boot's BOM remains authoritative for managed dependencies, including Jackson.
+Verification: 42 backend tests passed (18 unit/architecture; 24 integration), with all ITs sharing one context and real disposable PostgreSQL through Debian WSL Docker. Full temporary-account HTTP flow covers save, read, duplicate rejection, explicit update, list and persisted ownership/content. OpenAPI drift check and packaging pass.
 
-Verification: 15 unit/architecture tests, 12 complete HTTP contract/behavior tests and 11 supporting persistence tests (38 total). All backend IT classes reuse one Spring context, random-port HTTP server and disposable PostgreSQL container; an inherited assertion verifies context identity. Fixtures reset between tests under a shared resource lock. No Docker-dependent skips or H2.
+Extension: 20 tests, type checks, ESLint, Prettier and production Firefox build pass. Mozilla validation has no errors and four documented bundled-dependency warnings. Actual desktop/Android device verification remains outstanding.
 
-Full HTTP flows cover saving, reading, listing, pagination after new saves, timestamp ties, default/max limits, malformed cursors, enrichment, explicit updates, stale versions, ownership, invalid requests, size rejection and concurrency. The OpenAPI test checks all four operations, payloads, nullability, integer pagination, error fields, Location header and deterministic YAML export. Authentication fixtures remain test-only.
+Updated local container know-server:temporary-account passes the PostgreSQL smoke test, including unauthenticated saving and persisted content under 512 MiB / 1 CPU. This image has not been published or deployed to Render. Render must receive the updated image before the rebuilt extension can use temporary-account saving there.
 
-Repeat full verification: .\server\verify-wsl.ps1. Refresh the reviewed contract intentionally: .\server\verify-wsl.ps1 -ExportOpenApi. PowerShell helpers check native process exit codes, so compiler warnings do not cause false failures in Windows PowerShell 5. Integration classes end in IT; regular tests end in Test.
-
-Next checkpoint: Firefox extension client, then responsive webpage, then security. Clients and real security are not implemented. Startup target remains under five seconds to save-ready without first-save warm-up; deployment-like benchmarking has not yet been performed. No deployment or remote CI result is claimed.
-
-Toolchain: Spring Boot 4.1.2, Temurin Java 27+35, Gradle 9.8.2, PostgreSQL 17.11 Alpine, Spotless 8.10.4 / Google Java Format 1.36.0, MapStruct 1.6.3, ArchUnit 1.5.1, OWASP Java HTML Sanitizer 20261011.1, Springdoc 3.1.1. Other managed versions inherit Spring BOM.
-
-## Render preparation
-
-User requested deployment preparation. Added server/Dockerfile, an allowlisted build context, stable know-server.jar output, PORT binding, mounted Render secret-file example, DEPLOYMENT.md and a manual-only GHCR publish workflow. Runtime is Eclipse Temurin 27 Alpine JRE pinned by digest, UID/GID 10001; the image contains no source or build tools.
-
-Verified locally using Debian WSL Docker: all 38 backend tests and full build pass. The linux/amd64 image builds and passes a real PostgreSQL smoke check under 512 MiB / 1 CPU: required secret file, non-root JRE, custom PORT, Flyway migration, liveness, API 401 and disabled docs. This does not establish the save-ready startup benchmark. GitHub publishing, Render/Supabase configuration and deployment have not been executed.
+Next review checkpoint: Firefox extension. Responsive webpage and real security remain unimplemented. Startup target remains under five seconds to save-ready; the earlier local Supabase startup measured 11.6 seconds and is not a save-ready benchmark.

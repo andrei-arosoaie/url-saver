@@ -29,5 +29,7 @@ jobs:
           cache: gradle
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
+      - name: Verify Render deployment orchestration with fake HTTP responses
+        run: bash scripts/test-deploy-render.sh
       - name: Verify formatting, architecture, unit tests, PostgreSQL flows, OpenAPI drift and packaging
         run: ./gradlew --no-daemon check bootJar

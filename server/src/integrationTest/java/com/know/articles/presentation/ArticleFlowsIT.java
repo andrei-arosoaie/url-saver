@@ -135,10 +135,7 @@ class ArticleFlowsIT extends BackendIntegrationSupport {
   }
 
   @Test
-  void ownershipAndMissingArticleAreIndistinguishableAndUnauthenticatedCallsCannotWrite()
-      throws Exception {
-    assertError(
-        send("POST", "", null, article("https://example.test/a", "text")), 401, "UNAUTHENTICATED");
+  void ownershipAndMissingArticleAreIndistinguishable() throws Exception {
     var created = send("POST", "", owner, article("https://example.test/a", "text"));
     var id = body(created).get("article").get("id").asText();
     for (var path : List.of("/" + id, "/" + UUID.randomUUID())) {
@@ -153,6 +150,42 @@ class ArticleFlowsIT extends BackendIntegrationSupport {
                 .statusCode())
         .isEqualTo(201);
     assertThat(jdbc.queryForObject("select count(*) from articles", Integer.class)).isEqualTo(2);
+  }
+
+  @Test
+  void temporaryAccountCanSaveReadHandleDuplicateExplicitlyUpdateAndListWithoutSignIn()
+      throws Exception {
+    var created =
+        send(
+            "POST", "", null, article("https://example.test/temporary", "<p>Original article</p>"));
+    assertThat(created.statusCode()).isEqualTo(201);
+    var id = body(created).get("article").get("id").asText();
+    assertThat(body(send("GET", "/" + id, null, null)).get("content").asText())
+        .isEqualTo("<p>Original article</p>");
+    assertError(
+        send("POST", "", null, article("https://example.test/temporary", "<p>Replacement</p>")),
+        409,
+        "DUPLICATE_URL");
+    assertThat(body(send("GET", "/" + id, null, null)).get("version").asLong()).isZero();
+    var updated =
+        send(
+            "PATCH",
+            "/" + id,
+            null,
+            Map.of("version", 0, "content", "<p>Explicit replacement</p>"));
+    assertThat(updated.statusCode()).isEqualTo(200);
+    assertThat(body(updated).get("version").asLong()).isEqualTo(1);
+    assertThat(body(send("GET", "", null, null)).get("items").get(0).get("id").asText())
+        .isEqualTo(id);
+    assertThat(
+            jdbc.queryForObject(
+                "select account_id from articles where id=?", UUID.class, UUID.fromString(id)))
+        .isEqualTo(UUID.fromString("00000000-0000-4000-8000-000000000001"));
+    assertThat(
+            jdbc.queryForObject(
+                "select content from articles where id=?", String.class, UUID.fromString(id)))
+        .isEqualTo("<p>Explicit replacement</p>");
+    assertError(send("GET", "/" + id, other, null), 404, "ARTICLE_NOT_FOUND");
   }
 
   @Test
