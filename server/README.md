@@ -7,10 +7,11 @@ Spring Boot 4.1.2, Temurin Java 27, Gradle 9.8.2; PostgreSQL 17.11 Alpine for de
 - POST /api/v1/articles: create, reuse link-only saves, enrich missing content; duplicate content returns 409 without overwriting.
 - PATCH /api/v1/articles/{id}: explicit versioned update; stale versions return 409; omitted fields stay unchanged, null/empty content is rejected.
 - GET /api/v1/articles/{id}: read owned content; missing/other-account articles both return 404.
+- GET /api/v1/articles: owned summaries, newest first; default 20/max 100; opaque nextCursor for Load more, null at the end. No HTML or total-count query.
 - Sanitized HTML only: preserve article prose, remove executable markup and images. Configurable UTF-8 content and Unicode title limits; reject without truncation.
 - Flyway schema, per-account exact-URL SHA-256 uniqueness, database hash verification, transactional concurrency protection and version locking.
 
-List/cursor HTTP endpoint and OpenAPI export are the next checkpoint. Clients and real authentication come later. Runtime requests require an authenticated UUID principal from Spring Security context; no runtime fixture or bypass exists.
+All four article endpoints are implemented. Clients and real authentication come later. Runtime requests require an authenticated UUID principal from Spring Security context; no runtime fixture or bypass exists.
 
 ## Verify
 
@@ -23,6 +24,12 @@ From the workspace root, run .\server\verify-wsl.ps1. It uses Debian_Recovered W
 ArticleFlowsIT sends real HTTP requests to a randomly bound server and verifies real PostgreSQL state. Complete flows cover create/read/update, duplicate/explicit update, enrichment, stale versions, ownership, validation, size rejection and concurrent saves/updates. Authentication fixtures exist only in integration-test sources. ArticlePersistenceIT supplies additional database coverage, not a substitute for complete flows. No H2 or Docker-dependent skips.
 
 Reports: build/reports/tests/test and build/reports/tests/integrationTest. Integration classes end with IT; unit classes end in Test; Gradle enforces both.
+
+## OpenAPI contract
+
+The reviewed schema is openapi/openapi.yaml, exported from the real Springdoc HTTP endpoint during integration tests. Full check includes verifyOpenApi and fails on drift. To intentionally update it, run .\server\verify-wsl.ps1 -ExportOpenApi from the workspace root (or ./gradlew exportOpenApi from server), review the YAML and commit it. Generated client types remain build outputs.
+
+Swagger UI and /v3/api-docs are disabled by default. Mounted local YAML can enable springdoc.api-docs.enabled and springdoc.swagger-ui.enabled. Integration tests enable both; no Spring profiles are introduced. Spring Boot BOM versions remain authoritative, including Jackson used by Springdoc.
 
 ## Local configuration
 

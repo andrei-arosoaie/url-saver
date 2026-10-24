@@ -1,21 +1,17 @@
-# Backend save and update — review checkpoint
+# Backend listing and OpenAPI — review checkpoint
 
-Backend foundation accepted when the user authorized the next phase. Save/update implementation is ready for review after final verification; do not advance without user review.
+Backend foundation and save/update checkpoints accepted. Listing/OpenAPI is the current review checkpoint; do not start clients until user review.
 
-Implemented: POST capture/reuse/enrichment, duplicate 409 with existingArticleId, PATCH explicit update with JSON version, GET article detail for full save/read/update flows, and Spring default error attributes extended with reason. Missing/foreign-owned records return the same 404. Responses never expose accountId.
+All four article endpoints are implemented: POST capture/reuse/enrichment, PATCH explicit versioned update, GET owned detail, and GET cursor-paginated summaries. Listing defaults to 20 (maximum 100), newest first by saved_at DESC and UUID DESC. Fetch one extra summary to determine nextCursor; no total count or article HTML in list queries/responses. Bookmarks are opaque, strictly validated and never grant account access.
 
-OWASP Java HTML Sanitizer 20261011.1 preserves article text and allowed formatting; removes scripts, unsafe attributes, images and unsafe link destinations. Input/output content limits are UTF-8 byte limits; title limit counts Unicode code points. No truncation, content clearing or silent link-only downgrade. Unsupported wrappers retain text. Invalid/oversized requests do not commit partial changes.
+Springdoc 3.1.1 exports the running backend contract to build/openapi/openapi.yaml. The reviewed contract is server/openapi/openapi.yaml. Gradle verifyOpenApi compares them and is part of check/CI; exportOpenApi deliberately updates the reviewed file. Swagger UI/API docs are disabled by default and enabled in integration tests. Spring Boot's BOM remains authoritative for managed dependencies, including Jackson.
 
-Concurrent inserts use PostgreSQL ON CONFLICT with the existing per-account URL-hash unique index; application transactions lock existing rows before enrichment/update. Version checks prevent lost updates, unchanged records retain their version, and original saved timestamps remain unchanged.
+Verification: 15 unit/architecture tests, 12 complete HTTP contract/behavior tests and 11 supporting persistence tests (38 total). All backend IT classes reuse one Spring context, random-port HTTP server and disposable PostgreSQL container; an inherited assertion verifies context identity. Fixtures reset between tests under a shared resource lock. No Docker-dependent skips or H2.
 
-Verification: 13 unit/architecture tests, 7 complete HTTP-to-PostgreSQL flow tests and 11 additional persistence tests. Full check, formatting, test-name enforcement and JAR packaging run through Debian_Recovered WSL Docker. Final verification evidence is recorded in .tools/backend-save-update-verification.log; no test skips are accepted.
+Full HTTP flows cover saving, reading, listing, pagination after new saves, timestamp ties, default/max limits, malformed cursors, enrichment, explicit updates, stale versions, ownership, invalid requests, size rejection and concurrency. The OpenAPI test checks all four operations, payloads, nullability, integer pagination, error fields, Location header and deterministic YAML export. Authentication fixtures remain test-only.
 
-HTTP tests start the real server on a random port and verify persisted state after create/read/update, duplicates, enrichment, stale versions, ownership errors, invalid requests, size rejection, and concurrent saves/updates. Test-only authentication supplies Security context; no production bypass exists. Mockito uses subclass mocks/reflection, never static mocks.
+Repeat full verification: .\server\verify-wsl.ps1. Refresh the reviewed contract intentionally: .\server\verify-wsl.ps1 -ExportOpenApi. PowerShell helpers check native process exit codes, so compiler warnings do not cause false failures in Windows PowerShell 5. Integration classes end in IT; regular tests end in Test.
 
-Next checkpoint: list/cursor endpoint, remaining retrieval flows, OpenAPI export and drift enforcement. Extension, webpage and real security are not implemented. Startup target is not yet benchmarked. CI definition exists but has not run remotely. No deployment.
+Next checkpoint: Firefox extension client, then responsive webpage, then security. Clients and real security are not implemented. Startup target remains under five seconds to save-ready without first-save warm-up; deployment-like benchmarking has not yet been performed. No deployment or remote CI result is claimed.
 
-Toolchain: Spring Boot 4.1.2, Temurin Java 27+35, Gradle 9.8.2, PostgreSQL 17.11 Alpine, Spotless 8.10.4 / Google Java Format 1.36.0, MapStruct 1.6.3, ArchUnit 1.5.1; other managed versions inherit Spring BOM. Spring Security core supplies context only at this stage.
-
-Repeat from workspace root: .\server\verify-wsl.ps1. Test classes: IT suffix for integration; Test suffix for regular tests. Full-flow integration coverage is mandatory; repository tests alone never establish feature completion.
-
-All backend IT classes extend BackendIntegrationSupport: one cached Spring context, random-port HTTP server and JVM-scoped disposable PostgreSQL container. An inherited assertion verifies context identity across classes. Shared database fixtures reset between tests; a resource lock prevents parallel fixture resets. No per-class container shutdown or context eviction.
+Toolchain: Spring Boot 4.1.2, Temurin Java 27+35, Gradle 9.8.2, PostgreSQL 17.11 Alpine, Spotless 8.10.4 / Google Java Format 1.36.0, MapStruct 1.6.3, ArchUnit 1.5.1, OWASP Java HTML Sanitizer 20261011.1, Springdoc 3.1.1. Other managed versions inherit Spring BOM.

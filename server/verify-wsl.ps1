@@ -1,6 +1,7 @@
 param(
     [string]$Distribution = 'Debian_Recovered',
-    [switch]$UnitOnly
+    [switch]$UnitOnly,
+    [switch]$ExportOpenApi
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,10 @@ if ($LASTEXITCODE -ne 0 -or -not $resolvedWorkspace) {
 }
 $linuxWorkspace = ($resolvedWorkspace -join "`n").Trim()
 
-$tasks = if ($UnitOnly) {
+if ($UnitOnly -and $ExportOpenApi) { throw 'Choose UnitOnly or ExportOpenApi, not both.' }
+$tasks = if ($ExportOpenApi) {
+    @('spotlessCheck', 'test', 'exportOpenApi', 'bootJar')
+} elseif ($UnitOnly) {
     @('spotlessCheck', 'test', 'compileIntegrationTestJava', 'bootJar')
 } else {
     @('check', 'bootJar')
@@ -31,5 +35,13 @@ $dockerArguments = @(
     '--project-cache-dir', '/workspace/.tools/gradle-linux-project-cache'
 ) + $tasks
 
-& $wslExecutable @dockerArguments
-if ($LASTEXITCODE -ne 0) { throw "Backend verification failed (exit $LASTEXITCODE)." }
+$savedErrorAction = $ErrorActionPreference
+try {
+    # Windows PowerShell 5 treats redirected native stderr as ErrorRecords, even for warnings.
+    $ErrorActionPreference = 'Continue'
+    & $wslExecutable @dockerArguments 2>&1 | ForEach-Object { $_.ToString() }
+    $verificationExit = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $savedErrorAction
+}
+if ($verificationExit -ne 0) { throw "Backend verification failed (exit $verificationExit)." }

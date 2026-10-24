@@ -29,5 +29,5 @@ jobs:
           cache: gradle
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
-      - name: Verify formatting, architecture, unit tests, PostgreSQL integration and packaging
+      - name: Verify formatting, architecture, unit tests, PostgreSQL flows, OpenAPI drift and packaging
         run: ./gradlew --no-daemon check bootJar

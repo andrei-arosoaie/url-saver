@@ -12,4 +12,6 @@ public interface ArticleApiMapper {
   ArticleResponse toResponse(ArticleSnapshot article);
 
   SaveArticleResponse toResponse(SaveResult result);
+
+  ArticleSummaryResponse toResponse(ArticleSummary summary);
 }
