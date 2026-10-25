@@ -15,7 +15,7 @@ export class ArticleApi {
   constructor(
     private origin: string,
     private token: () => Promise<string | undefined>,
-    private request: typeof fetch = fetch,
+    private request: typeof fetch = globalThis.fetch.bind(globalThis),
   ) {}
   private async call(
     path: string,

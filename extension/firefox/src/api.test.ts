@@ -21,6 +21,26 @@ function fixture() {
   };
 }
 describe("article API", () => {
+  it("binds native fetch to its global context rather than the API instance", async () => {
+    const nativeFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = function (this: unknown) {
+      expect(this).toBe(globalThis);
+      calls++;
+      return Promise.resolve(
+        Response.json({ outcome: "CREATED", article }, { status: 201 }),
+      );
+    };
+    try {
+      const api = new ArticleApi("https://know.example", async () => undefined);
+      await expect(api.save(capture)).resolves.toMatchObject({
+        outcome: "CREATED",
+      });
+      expect(calls).toBe(1);
+    } finally {
+      globalThis.fetch = nativeFetch;
+    }
+  });
   it("waits for a valid server response and sends bearer credentials only to configured server", async () => {
     const { request, api } = fixture();
     request.mockResolvedValue(
