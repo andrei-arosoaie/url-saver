@@ -1,0 +1,3052 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Know Phase 2 API — review draft",
+    "version": "0.1.0-draft",
+    "description": "Documentation proposal only. Phase 1 implemented API and migrations are unchanged. Product policies are approved; technical routes/payloads are for review. See each operation description and the history-correction review note."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/entities": {
+      "get": {
+        "operationId": "phase20",
+        "summary": "List entities",
+        "description": "type required: BOOK | MOVIE | TV_SHOW | GAME. query/status/completionYear optional. status must belong to selected type. limit initially default 20/max 100, both configurable in application.yml. Cursor: createdAt + UUID, newest first. Bind cursor to type/search/status/year and always scope by owner. query is case-insensitive literal title substring; it does not alter exact-title identity.\n\nOne item per entity. completionYear filters by history events inside the UTC year, irrespective of current status. completionCount is for selected year, otherwise all history. totalCompletionCount and lastCompletedAt always cover all history. Without a year, include unfinished entities. No article HTML in summaries.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation. Approved: case-insensitive literal title substring search; exact-title duplicate identity is unchanged.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BOOK",
+                "MOVIE",
+                "TV_SHOW",
+                "GAME"
+              ]
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TO_READ",
+                "READING",
+                "READ",
+                "TO_BE_SEEN",
+                "SEEN",
+                "TO_PLAY",
+                "PLAYING",
+                "FINISHED"
+              ]
+            }
+          },
+          {
+            "name": "completionYear",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9998
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "lastCompletedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "totalCompletionCount": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "completionCount": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "latestMatchingCompletionAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "title",
+                          "status",
+                          "createdAt",
+                          "version",
+                          "lastCompletedAt",
+                          "totalCompletionCount",
+                          "completionCount",
+                          "latestMatchingCompletionAt"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                      "type": "BOOK",
+                      "title": "Dune",
+                      "status": "READ",
+                      "createdAt": "2026-10-25T18:30:00Z",
+                      "version": 1,
+                      "lastCompletedAt": "2026-10-25T18:31:00Z",
+                      "totalCompletionCount": 1,
+                      "completionCount": 1,
+                      "latestMatchingCompletionAt": "2026-10-25T18:31:00Z"
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "phase21",
+        "summary": "Create an entity manually",
+        "description": "type/title required; status optional, defaults TO_READ / TO_BE_SEEN / TO_PLAY. Optional completedAt only when initial status is completed; omitted timestamp means server-now. Titles must be nonblank, exact unmodified text, configurable maximum 1,000 Unicode code points. No caller account, ID or createdAt.\n\n201 + Location. Exact owner/type/title duplicate returns 409 DUPLICATE_ENTITY, never silently reuses a manual creation. Case and spaces are significant. Initial completed status creates the first completion atomically. Exact-title hash uniqueness handles concurrent requests and long titles; compare full titles on conflict.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation. Approved initial statuses: BOOK=TO_READ, MOVIE/TV_SHOW=TO_BE_SEEN, GAME=TO_PLAY.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "lastCompletedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "totalCompletionCount": {
+                      "type": "integer",
+                      "format": "int64"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "title",
+                    "status",
+                    "createdAt",
+                    "version",
+                    "lastCompletedAt",
+                    "totalCompletionCount"
+                  ]
+                },
+                "example": {
+                  "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "type": "BOOK",
+                  "title": "Dune",
+                  "status": "TO_READ",
+                  "createdAt": "2026-10-25T18:30:00Z",
+                  "version": 0,
+                  "lastCompletedAt": null,
+                  "totalCompletionCount": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityCreate"
+              },
+              "example": {
+                "type": "BOOK",
+                "title": "Dune",
+                "status": "TO_READ"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/{entityId}": {
+      "get": {
+        "operationId": "phase22",
+        "summary": "Read entity details",
+        "description": "entityId UUID; current account from trusted authentication context.\n\n200. Linked source pages and completion history have their own paginated endpoints. Missing and foreign-owned entities both return 404.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "lastCompletedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "totalCompletionCount": {
+                      "type": "integer",
+                      "format": "int64"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "title",
+                    "status",
+                    "createdAt",
+                    "version",
+                    "lastCompletedAt",
+                    "totalCompletionCount"
+                  ]
+                },
+                "example": {
+                  "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "type": "BOOK",
+                  "title": "Dune",
+                  "status": "READ",
+                  "createdAt": "2026-10-25T18:30:00Z",
+                  "version": 1,
+                  "lastCompletedAt": "2026-10-25T18:31:00Z",
+                  "totalCompletionCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "phase23",
+        "summary": "Edit title or current status",
+        "description": "version required; title and/or status required. Optional completedAt only for an actual transition into completed status. Omitted fields unchanged; null/blank title rejected. Entity type and createdAt immutable in this draft.\n\n200. Real transition into READ/SEEN/FINISHED appends an event using supplied time or server-now, atomically. Repeating the same completed status does not append history; use Add completion. Actual title/status/history changes increment entity version; no-op does not. Rename into exact owner/type/title duplicate returns 409 without partial changes. Leaving completed status preserves history. Metadata edits on linked articles never implicitly rename or replace this entity.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "lastCompletedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "totalCompletionCount": {
+                      "type": "integer",
+                      "format": "int64"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "title",
+                    "status",
+                    "createdAt",
+                    "version",
+                    "lastCompletedAt",
+                    "totalCompletionCount"
+                  ]
+                },
+                "example": {
+                  "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "type": "BOOK",
+                  "title": "Dune (revised edition)",
+                  "status": "READ",
+                  "createdAt": "2026-10-25T18:30:00Z",
+                  "version": 2,
+                  "lastCompletedAt": "2026-10-25T18:31:00Z",
+                  "totalCompletionCount": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityPatch"
+              },
+              "example": {
+                "version": 1,
+                "title": "Dune (revised edition)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/years": {
+      "get": {
+        "operationId": "phase24",
+        "summary": "Completion years and counts",
+        "description": "type required; optional query and current status filter, using the same search rules as listing.\n\n200. Derive years from completedAt in UTC; distinct entityCount and total event completionCount. Descending year order. A single entity may appear in multiple years. By-year view loads each year’s entity rows using GET entities with completionYear; each row has that year’s completionCount. Creation date never determines this grouping.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BOOK",
+                "MOVIE",
+                "TV_SHOW",
+                "GAME"
+              ]
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TO_READ",
+                "READING",
+                "READ",
+                "TO_BE_SEEN",
+                "SEEN",
+                "TO_PLAY",
+                "PLAYING",
+                "FINISHED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "years": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "year": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "entityCount": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "completionCount": {
+                            "type": "integer",
+                            "format": "int64"
+                          }
+                        },
+                        "required": [
+                          "year",
+                          "entityCount",
+                          "completionCount"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "years"
+                  ]
+                },
+                "example": {
+                  "years": [
+                    {
+                      "year": 2026,
+                      "entityCount": 1,
+                      "completionCount": 2
+                    },
+                    {
+                      "year": 2025,
+                      "entityCount": 1,
+                      "completionCount": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/{entityId}/completions": {
+      "get": {
+        "operationId": "phase25",
+        "summary": "Read completion history",
+        "description": "Entity UUID; limit initially default 20/max 100, both configurable in application.yml. Cursor completedAt + UUID, newest first; owner/entity-scoped.\n\n200. Exact UTC timestamps and separate event creation time. Events with identical timestamps remain separate, ordered by UUID tie-breaker. No synthetic history from current status.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "entityId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "completedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "entityId",
+                          "completedAt",
+                          "createdAt",
+                          "version"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+                      "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                      "completedAt": "2026-10-25T18:31:00Z",
+                      "createdAt": "2026-10-25T18:31:00Z",
+                      "version": 0
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "phase26",
+        "summary": "Add another completion",
+        "description": "version is the expected entity version. completedAt optional ISO-8601 instant; server-now UTC if omitted. The normal Add completion action needs no time prompt. A historical timestamp may be supplied explicitly.\n\n201 + completion Location. Always creates a distinct history event and sets READ/SEEN/FINISHED, even for a past timestamp. Current entity version increments once. Status/history update is atomic. No automatic client retry after conflict or unconfirmed response.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "entity": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "format": "int64"
+                        },
+                        "lastCompletedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "totalCompletionCount": {
+                          "type": "integer",
+                          "format": "int64"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "title",
+                        "status",
+                        "createdAt",
+                        "version",
+                        "lastCompletedAt",
+                        "totalCompletionCount"
+                      ]
+                    },
+                    "completion": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "completedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "format": "int64"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entityId",
+                        "completedAt",
+                        "createdAt",
+                        "version"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "entity",
+                    "completion"
+                  ]
+                },
+                "example": {
+                  "entity": {
+                    "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "type": "BOOK",
+                    "title": "Dune",
+                    "status": "READ",
+                    "createdAt": "2026-10-25T18:30:00Z",
+                    "version": 2,
+                    "lastCompletedAt": "2026-10-25T18:31:00Z",
+                    "totalCompletionCount": 2
+                  },
+                  "completion": {
+                    "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+                    "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "completedAt": "2025-12-20T19:00:00Z",
+                    "createdAt": "2026-10-25T18:31:00Z",
+                    "version": 0
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionCreate"
+              },
+              "example": {
+                "version": 1,
+                "completedAt": "2025-12-20T19:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/{entityId}/completions/{completionId}": {
+      "patch": {
+        "operationId": "phase27",
+        "summary": "Correct a completion timestamp",
+        "description": "version is the completion-record version; completedAt required ISO-8601 instant. IDs must refer to the same owned entity.\n\n200. Actual timestamp edit increments completion version and recomputes derived year membership/counts; no-op leaves version unchanged. Preserve createdAt and other events. Draft review point: correction leaves the separately managed current entity status unchanged.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "completionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "entityId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "completedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "format": "int64"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "entityId",
+                    "completedAt",
+                    "createdAt",
+                    "version"
+                  ]
+                },
+                "example": {
+                  "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+                  "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "completedAt": "2025-12-21T19:00:00Z",
+                  "createdAt": "2026-10-25T18:31:00Z",
+                  "version": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionPatch"
+              },
+              "example": {
+                "version": 0,
+                "completedAt": "2025-12-21T19:00:00Z"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "phase28",
+        "summary": "Remove a completion history entry",
+        "description": "Expected completion version required as query parameter. Completion and entity must both be owned.\n\nDelete only this event; preserve entity, source links and all other history. Missing/foreign-owned event: 404. Stale version: 409. Counts/lastCompletedAt derive from remaining history. Draft review point: current status remains unchanged, including after removing the last event; users edit current status separately.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "completionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/articles/{articleId}/entities": {
+      "get": {
+        "operationId": "phase29",
+        "summary": "List entities linked to a captured page",
+        "description": "Owned article UUID; optional limit/cursor; no required type filter because one page can link several types.\n\n200. Empty array if no links. Validate article ownership first. Sort entity createdAt + UUID, newest first. Main Entities page still requires exactly one selected type.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "lastCompletedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "totalCompletionCount": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "linkedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "title",
+                          "status",
+                          "createdAt",
+                          "version",
+                          "lastCompletedAt",
+                          "totalCompletionCount",
+                          "linkedAt"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                      "type": "BOOK",
+                      "title": "Dune",
+                      "status": "READ",
+                      "createdAt": "2026-10-25T18:30:00Z",
+                      "version": 1,
+                      "lastCompletedAt": "2026-10-25T18:31:00Z",
+                      "totalCompletionCount": 1,
+                      "linkedAt": "2026-10-25T18:32:00Z"
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "phase210",
+        "summary": "Add from identified page metadata",
+        "description": "Explicit entity type/title for an owned article; preserve exact title. UI uses the identified/manually edited name. No dependency on deferred extraction.\n\n201 if a new entity is created, 200 if an exact owner/type/title entity is reused. Reuse existing entity/status/history, then ensure association exists atomically. Outcomes CREATED, LINKED or UNCHANGED. New entities start in initial status. Matching digest with different full title is a collision error, not reuse. Explicit Add required; editing page metadata alone never changes links.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "entity": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "format": "int64"
+                        },
+                        "lastCompletedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "totalCompletionCount": {
+                          "type": "integer",
+                          "format": "int64"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "title",
+                        "status",
+                        "createdAt",
+                        "version",
+                        "lastCompletedAt",
+                        "totalCompletionCount"
+                      ]
+                    },
+                    "link": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "articleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "linkedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "articleId",
+                        "entityId",
+                        "linkedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "outcome",
+                    "entity",
+                    "link"
+                  ]
+                },
+                "example": {
+                  "outcome": "LINKED",
+                  "entity": {
+                    "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "type": "BOOK",
+                    "title": "Dune",
+                    "status": "READ",
+                    "createdAt": "2026-10-25T18:30:00Z",
+                    "version": 1,
+                    "lastCompletedAt": "2026-10-25T18:31:00Z",
+                    "totalCompletionCount": 1
+                  },
+                  "link": {
+                    "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                    "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "linkedAt": "2026-10-25T18:32:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "outcome": {
+                      "type": "string"
+                    },
+                    "entity": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "format": "int64"
+                        },
+                        "lastCompletedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "totalCompletionCount": {
+                          "type": "integer",
+                          "format": "int64"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "title",
+                        "status",
+                        "createdAt",
+                        "version",
+                        "lastCompletedAt",
+                        "totalCompletionCount"
+                      ]
+                    },
+                    "link": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "articleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "entityId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "linkedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "articleId",
+                        "entityId",
+                        "linkedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "outcome",
+                    "entity",
+                    "link"
+                  ]
+                },
+                "example": {
+                  "outcome": "LINKED",
+                  "entity": {
+                    "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "type": "BOOK",
+                    "title": "Dune",
+                    "status": "READ",
+                    "createdAt": "2026-10-25T18:30:00Z",
+                    "version": 1,
+                    "lastCompletedAt": "2026-10-25T18:31:00Z",
+                    "totalCompletionCount": 1
+                  },
+                  "link": {
+                    "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                    "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                    "linkedAt": "2026-10-25T18:32:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceEntityCreate"
+              },
+              "example": {
+                "type": "BOOK",
+                "title": "Dune"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/articles/{articleId}/entities/{entityId}": {
+      "put": {
+        "operationId": "phase211",
+        "summary": "Link an existing selected entity",
+        "description": "Both article and entity UUIDs must belong to current account. Unique article/entity pair.\n\n201 for new link; 200 when already linked. Preserve original linkedAt on reuse. Do not change entity title/status/history or the captured article. This enables several entities per page and many pages per entity.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "articleId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "entityId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "linkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "articleId",
+                    "entityId",
+                    "linkedAt"
+                  ]
+                },
+                "example": {
+                  "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                  "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "linkedAt": "2026-10-25T18:32:00Z"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "articleId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "entityId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "linkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "articleId",
+                    "entityId",
+                    "linkedAt"
+                  ]
+                },
+                "example": {
+                  "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                  "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+                  "linkedAt": "2026-10-25T18:32:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "phase212",
+        "summary": "Unlink only this page/entity pair",
+        "description": "Both parent resources must be owned. No arbitrary accountId.\n\nDelete one association only. Keep entity in its list, keep completion history, keep article, and keep other associations. Repeated unlink of a missing association is 204 when both parents exist and are owned; missing/foreign parent is 404. No general entity-delete API is introduced.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/{entityId}/articles": {
+      "get": {
+        "operationId": "phase213",
+        "summary": "Read entity source pages",
+        "description": "Owned entity UUID; article savedAt + UUID cursor, newest first; limit initially default 20/max 100, both configurable in application.yml.\n\n200. Article summaries only; open existing article detail for content. Manual entities can return an empty list. All joins enforce account ownership.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string",
+                            "description": "Stable key from the authenticated account category catalog. Initial keys: ARCHITECTURE, DEVELOPMENT, AI, OTHER, BOOKS, MOVIES, TV_SHOWS, GAMES. Not a closed enum."
+                          },
+                          "entityName": {
+                            "type": "string"
+                          },
+                          "savedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "hasContent": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "url",
+                          "title",
+                          "category",
+                          "entityName",
+                          "savedAt",
+                          "version",
+                          "hasContent"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                      "url": "https://example.test/dune",
+                      "title": "A guide to Dune",
+                      "category": "BOOKS",
+                      "entityName": "Dune",
+                      "savedAt": "2026-10-25T18:29:00Z",
+                      "version": 0,
+                      "hasContent": true
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/articles/{articleId}": {
+      "patch": {
+        "operationId": "phase214",
+        "summary": "Edit captured page classification/name",
+        "description": "Extends existing PATCH; existing title/content rules stay. category: stable key from the authenticated account category catalog. entityName optional string; explicit null clears the label. version required. A single primary display category sets the node color; linked entities may include several types.\n\n200. Validate and increment article version on actual change. Article GET/list include category and entityName. Existing records migrate to OTHER with null label; do not infer classification. Existing links remain untouched until explicit replacement. Replacement is explicit link/unlink actions; no silent retargeting.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string",
+                      "description": "Stable key from the authenticated account category catalog. Initial keys: ARCHITECTURE, DEVELOPMENT, AI, OTHER, BOOKS, MOVIES, TV_SHOWS, GAMES. Not a closed enum."
+                    },
+                    "entityName": {
+                      "type": "string"
+                    },
+                    "savedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "format": "int64"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "url",
+                    "title",
+                    "category",
+                    "entityName",
+                    "savedAt",
+                    "content",
+                    "version"
+                  ]
+                },
+                "example": {
+                  "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                  "url": "https://example.test/dune",
+                  "title": "A guide to Dune",
+                  "category": "BOOKS",
+                  "entityName": "Dune",
+                  "savedAt": "2026-10-25T18:29:00Z",
+                  "content": "<p>Saved article.</p>",
+                  "version": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleMetadataPatch"
+              },
+              "example": {
+                "version": 0,
+                "category": "BOOKS",
+                "entityName": "Dune"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/articles": {
+      "get": {
+        "operationId": "phase215",
+        "summary": "Filter and search the timeline",
+        "description": "category optional; omit for All categories. Use a stable key from the authenticated account category catalog. query optional literal case-insensitive substring over captured title, identified entity name and source URL; not article HTML. Existing limit initially default 20/max 100, both configurable in application.yml and savedAt + UUID cursor stay.\n\n200. Scope by owner and filters in SQL before paging. Cursor is bound to the category/search filter set. Default no filters preserves Phase 1 listing behavior. No saved HTML in summaries. Filtering the timeline does not refetch or replace the currently open reader.\n\nTechnical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation.",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Stable key from the authenticated account category catalog. Initial keys: ARCHITECTURE, DEVELOPMENT, AI, OTHER, BOOKS, MOVIES, TV_SHOWS, GAMES. Not a closed enum."
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": " Initial default 20 and maximum 100 are configurable in application.yml; published schema must reflect effective limits."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string",
+                            "description": "Stable key from the authenticated account category catalog. Initial keys: ARCHITECTURE, DEVELOPMENT, AI, OTHER, BOOKS, MOVIES, TV_SHOWS, GAMES. Not a closed enum."
+                          },
+                          "entityName": {
+                            "type": "string"
+                          },
+                          "savedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          },
+                          "hasContent": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "url",
+                          "title",
+                          "category",
+                          "entityName",
+                          "savedAt",
+                          "version",
+                          "hasContent"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+                      "url": "https://example.test/dune",
+                      "title": "A guide to Dune",
+                      "category": "BOOKS",
+                      "entityName": "Dune",
+                      "savedAt": "2026-10-25T18:29:00Z",
+                      "version": 0,
+                      "hasContent": true
+                    }
+                  ],
+                  "nextCursor": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or status/type combination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or foreign-owned resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or exact-title conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error or verified hash collision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "summary": "Read category catalog",
+        "description": "200. Account-scoped records. Phase 2 seeds eight enabled defaults per account; filters, metadata editing and node colors consume these records. Entity types are separate. Category management is Phase 5.",
+        "operationId": "listCategories",
+        "responses": {
+          "200": {
+            "description": "Owned category catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "key",
+                          "displayName",
+                          "color",
+                          "isDefault",
+                          "enabled",
+                          "createdAt",
+                          "version"
+                        ],
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "color": {
+                            "type": "string"
+                          },
+                          "isDefault": {
+                            "type": "boolean"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "format": "int64"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "items": [
+                    {
+                      "key": "BOOKS",
+                      "displayName": "Books",
+                      "color": "#168e91",
+                      "isDefault": true,
+                      "enabled": true,
+                      "createdAt": "2026-10-25T18:30:00Z",
+                      "version": 0
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "EntityCreate": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "BOOK"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "TO_READ",
+                  "READING",
+                  "READ"
+                ],
+                "default": "TO_READ"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "type",
+              "title"
+            ],
+            "description": "A completion timestamp is valid only when initial status is completed; omitted instant is server-now UTC."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "MOVIE"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "TO_BE_SEEN",
+                  "SEEN"
+                ],
+                "default": "TO_BE_SEEN"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "type",
+              "title"
+            ],
+            "description": "A completion timestamp is valid only when initial status is completed; omitted instant is server-now UTC."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "TV_SHOW"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "TO_BE_SEEN",
+                  "SEEN"
+                ],
+                "default": "TO_BE_SEEN"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "type",
+              "title"
+            ],
+            "description": "A completion timestamp is valid only when initial status is completed; omitted instant is server-now UTC."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "GAME"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000,
+                "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "TO_PLAY",
+                  "PLAYING",
+                  "FINISHED"
+                ],
+                "default": "TO_PLAY"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "type",
+              "title"
+            ],
+            "description": "A completion timestamp is valid only when initial status is completed; omitted instant is server-now UTC."
+          }
+        ]
+      },
+      "EntityPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "TO_READ",
+              "READING",
+              "READ",
+              "TO_BE_SEEN",
+              "SEEN",
+              "TO_PLAY",
+              "PLAYING",
+              "FINISHED"
+            ]
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "title"
+            ]
+          },
+          {
+            "required": [
+              "status"
+            ]
+          }
+        ]
+      },
+      "CompletionCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "CompletionPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "version",
+          "completedAt"
+        ]
+      },
+      "SourceEntityCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BOOK",
+              "MOVIE",
+              "TV_SHOW",
+              "GAME"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+          }
+        },
+        "required": [
+          "type",
+          "title"
+        ]
+      },
+      "ArticleMetadataPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Preserve exact submitted text. Nonblank; default configurable maximum 1000 Unicode code points. No trimming or case folding."
+          },
+          "content": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "description": "Stable key from the authenticated account category catalog. Initial keys: ARCHITECTURE, DEVELOPMENT, AI, OTHER, BOOKS, MOVIES, TV_SHOWS, GAMES. Not a closed enum."
+          },
+          "entityName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "title"
+            ]
+          },
+          {
+            "required": [
+              "content"
+            ]
+          },
+          {
+            "required": [
+              "category"
+            ]
+          },
+          {
+            "required": [
+              "entityName"
+            ]
+          }
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "existingEntityId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

@@ -11,10 +11,12 @@ public class ArticleCommands {
   private final CurrentAccount currentAccount;
   private final ArticleContent contentPolicy;
   private final ArticleWriter writer;
+  private final com.know.categories.application.CategoryCatalog categories;
 
   @Transactional
   public SaveResult save(SaveArticle command) {
     var account = currentAccount.requireId();
+    categories.ensureDefaults(account);
     contentPolicy.validateUrl(command.url());
     contentPolicy.validateTitle(command.title());
     var content = command.content() == null ? null : contentPolicy.sanitize(command.content());
@@ -42,7 +44,10 @@ public class ArticleCommands {
     var article = writer.lockOwned(account, id);
     if (command.version() == null
         || command.version() < 0
-        || (command.title() == null && command.content() == null)) {
+        || (command.title() == null
+            && command.content() == null
+            && command.category() == null
+            && !command.entityNamePresent())) {
       throw new ArticleFailure(
           400, "INVALID_REQUEST", "Supply a non-negative version and title or content.");
     }
@@ -50,9 +55,21 @@ public class ArticleCommands {
       throw new ArticleFailure(409, "VERSION_CONFLICT", "Article changed; reload before updating.");
     }
     if (command.title() != null) contentPolicy.validateTitle(command.title());
+    if (command.category() != null) {
+      categories.ensureDefaults(account);
+      categories.requireEnabled(account, command.category());
+    }
+    if (command.entityNamePresent() && command.entityName() != null)
+      contentPolicy.validateTitle(command.entityName());
     var title = command.title() == null ? article.title() : command.title();
     var content =
         command.content() == null ? article.content() : contentPolicy.sanitize(command.content());
-    return writer.revise(account, id, title, content);
+    return writer.revise(
+        account,
+        id,
+        title,
+        content,
+        command.category() == null ? article.category() : command.category(),
+        command.entityNamePresent() ? command.entityName() : article.entityName());
   }
 }

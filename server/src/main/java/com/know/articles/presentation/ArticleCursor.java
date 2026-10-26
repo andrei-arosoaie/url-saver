@@ -11,6 +11,20 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ArticleCursor {
+  public String encode(ArticlePosition position, String scope) {
+    return position == null
+        ? null
+        : com.know.shared.application.ScopedCursor.encode(
+            new com.know.shared.application.ScopedCursor.Position(
+                position.savedAt(), position.id()),
+            scope);
+  }
+
+  public ArticlePosition decode(String cursor, String scope) {
+    var position = com.know.shared.application.ScopedCursor.decode(cursor, scope);
+    return position == null ? null : new ArticlePosition(position.time(), position.id());
+  }
+
   private static final Instant MIN_TIME = Instant.parse("0001-01-01T00:00:00Z");
   private static final Instant MAX_TIME = Instant.parse("9999-12-31T23:59:59.999999Z");
 

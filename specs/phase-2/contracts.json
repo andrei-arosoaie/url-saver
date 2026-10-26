@@ -1,0 +1,365 @@
+[
+  {
+    "title": "List entities",
+    "method": "GET",
+    "path": "/api/v1/entities",
+    "request": "?type=BOOK&query=Dune&status=READ&completionYear=2026&limit=20&cursor=<opaque>",
+    "fields": "type required: BOOK | MOVIE | TV_SHOW | GAME. query/status/completionYear optional. status must belong to selected type. limit initially default 20/max 100, both configurable in application.yml. Cursor: createdAt + UUID, newest first. Bind cursor to type/search/status/year and always scope by owner. query is case-insensitive literal title substring; it does not alter exact-title identity.",
+    "response": {
+      "items": [
+        {
+          "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+          "type": "BOOK",
+          "title": "Dune",
+          "status": "READ",
+          "createdAt": "2026-10-25T18:30:00Z",
+          "version": 1,
+          "lastCompletedAt": "2026-10-25T18:31:00Z",
+          "totalCompletionCount": 1,
+          "completionCount": 1,
+          "latestMatchingCompletionAt": "2026-10-25T18:31:00Z"
+        }
+      ],
+      "nextCursor": null
+    },
+    "rules": "One item per entity. completionYear filters by history events inside the UTC year, irrespective of current status. completionCount is for selected year, otherwise all history. totalCompletionCount and lastCompletedAt always cover all history. Without a year, include unfinished entities. No article HTML in summaries.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Create an entity manually",
+    "method": "POST",
+    "path": "/api/v1/entities",
+    "request": "{\n  \"type\": \"BOOK\",\n  \"title\": \"Dune\",\n  \"status\": \"TO_READ\"\n}",
+    "fields": "type/title required; status optional, defaults TO_READ / TO_BE_SEEN / TO_PLAY. Optional completedAt only when initial status is completed; omitted timestamp means server-now. Titles must be nonblank, exact unmodified text, configurable maximum 1,000 Unicode code points. No caller account, ID or createdAt.",
+    "response": {
+      "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+      "type": "BOOK",
+      "title": "Dune",
+      "status": "TO_READ",
+      "createdAt": "2026-10-25T18:30:00Z",
+      "version": 0,
+      "lastCompletedAt": null,
+      "totalCompletionCount": 0
+    },
+    "rules": "201 + Location. Exact owner/type/title duplicate returns 409 DUPLICATE_ENTITY, never silently reuses a manual creation. Case and spaces are significant. Initial completed status creates the first completion atomically. Exact-title hash uniqueness handles concurrent requests and long titles; compare full titles on conflict.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Read entity details",
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}",
+    "request": "No body.",
+    "fields": "entityId UUID; current account from trusted authentication context.",
+    "response": {
+      "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+      "type": "BOOK",
+      "title": "Dune",
+      "status": "READ",
+      "createdAt": "2026-10-25T18:30:00Z",
+      "version": 1,
+      "lastCompletedAt": "2026-10-25T18:31:00Z",
+      "totalCompletionCount": 1
+    },
+    "rules": "200. Linked source pages and completion history have their own paginated endpoints. Missing and foreign-owned entities both return 404.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Edit title or current status",
+    "method": "PATCH",
+    "path": "/api/v1/entities/{entityId}",
+    "request": "{\n  \"version\": 1,\n  \"title\": \"Dune (revised edition)\"\n}",
+    "fields": "version required; title and/or status required. Optional completedAt only for an actual transition into completed status. Omitted fields unchanged; null/blank title rejected. Entity type and createdAt immutable in this draft.",
+    "response": {
+      "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+      "type": "BOOK",
+      "title": "Dune (revised edition)",
+      "status": "READ",
+      "createdAt": "2026-10-25T18:30:00Z",
+      "version": 2,
+      "lastCompletedAt": "2026-10-25T18:31:00Z",
+      "totalCompletionCount": 1
+    },
+    "rules": "200. Real transition into READ/SEEN/FINISHED appends an event using supplied time or server-now, atomically. Repeating the same completed status does not append history; use Add completion. Actual title/status/history changes increment entity version; no-op does not. Rename into exact owner/type/title duplicate returns 409 without partial changes. Leaving completed status preserves history. Metadata edits on linked articles never implicitly rename or replace this entity.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Completion years and counts",
+    "method": "GET",
+    "path": "/api/v1/entities/years",
+    "request": "?type=BOOK&query=Dune",
+    "fields": "type required; optional query and current status filter, using the same search rules as listing.",
+    "response": {
+      "years": [
+        {
+          "year": 2026,
+          "entityCount": 1,
+          "completionCount": 2
+        },
+        {
+          "year": 2025,
+          "entityCount": 1,
+          "completionCount": 1
+        }
+      ]
+    },
+    "rules": "200. Derive years from completedAt in UTC; distinct entityCount and total event completionCount. Descending year order. A single entity may appear in multiple years. By-year view loads each year’s entity rows using GET entities with completionYear; each row has that year’s completionCount. Creation date never determines this grouping.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Read completion history",
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}/completions",
+    "request": "?limit=20&cursor=<opaque>",
+    "fields": "Entity UUID; limit initially default 20/max 100, both configurable in application.yml. Cursor completedAt + UUID, newest first; owner/entity-scoped.",
+    "response": {
+      "items": [
+        {
+          "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+          "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+          "completedAt": "2026-10-25T18:31:00Z",
+          "createdAt": "2026-10-25T18:31:00Z",
+          "version": 0
+        }
+      ],
+      "nextCursor": null
+    },
+    "rules": "200. Exact UTC timestamps and separate event creation time. Events with identical timestamps remain separate, ordered by UUID tie-breaker. No synthetic history from current status.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Add another completion",
+    "method": "POST",
+    "path": "/api/v1/entities/{entityId}/completions",
+    "request": "{\n  \"version\": 1,\n  \"completedAt\": \"2025-12-20T19:00:00Z\"\n}",
+    "fields": "version is the expected entity version. completedAt optional ISO-8601 instant; server-now UTC if omitted. The normal Add completion action needs no time prompt. A historical timestamp may be supplied explicitly.",
+    "response": {
+      "entity": {
+        "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+        "type": "BOOK",
+        "title": "Dune",
+        "status": "READ",
+        "createdAt": "2026-10-25T18:30:00Z",
+        "version": 2,
+        "lastCompletedAt": "2026-10-25T18:31:00Z",
+        "totalCompletionCount": 2
+      },
+      "completion": {
+        "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+        "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+        "completedAt": "2025-12-20T19:00:00Z",
+        "createdAt": "2026-10-25T18:31:00Z",
+        "version": 0
+      }
+    },
+    "rules": "201 + completion Location. Always creates a distinct history event and sets READ/SEEN/FINISHED, even for a past timestamp. Current entity version increments once. Status/history update is atomic. No automatic client retry after conflict or unconfirmed response.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Correct a completion timestamp",
+    "method": "PATCH",
+    "path": "/api/v1/entities/{entityId}/completions/{completionId}",
+    "request": "{\n  \"version\": 0,\n  \"completedAt\": \"2025-12-21T19:00:00Z\"\n}",
+    "fields": "version is the completion-record version; completedAt required ISO-8601 instant. IDs must refer to the same owned entity.",
+    "response": {
+      "id": "f8bf3212-1da6-4fe9-85c9-4678798693c8",
+      "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+      "completedAt": "2025-12-21T19:00:00Z",
+      "createdAt": "2026-10-25T18:31:00Z",
+      "version": 1
+    },
+    "rules": "200. Actual timestamp edit increments completion version and recomputes derived year membership/counts; no-op leaves version unchanged. Preserve createdAt and other events. Draft review point: correction leaves the separately managed current entity status unchanged.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Remove a completion history entry",
+    "method": "DELETE",
+    "path": "/api/v1/entities/{entityId}/completions/{completionId}",
+    "request": "?version=0",
+    "fields": "Expected completion version required as query parameter. Completion and entity must both be owned.",
+    "response": "204 No Content",
+    "rules": "Delete only this event; preserve entity, source links and all other history. Missing/foreign-owned event: 404. Stale version: 409. Counts/lastCompletedAt derive from remaining history. Draft review point: current status remains unchanged, including after removing the last event; users edit current status separately.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "List entities linked to a captured page",
+    "method": "GET",
+    "path": "/api/v1/articles/{articleId}/entities",
+    "request": "?limit=20&cursor=<opaque>",
+    "fields": "Owned article UUID; optional limit/cursor; no required type filter because one page can link several types.",
+    "response": {
+      "items": [
+        {
+          "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+          "type": "BOOK",
+          "title": "Dune",
+          "status": "READ",
+          "createdAt": "2026-10-25T18:30:00Z",
+          "version": 1,
+          "lastCompletedAt": "2026-10-25T18:31:00Z",
+          "totalCompletionCount": 1,
+          "linkedAt": "2026-10-25T18:32:00Z"
+        }
+      ],
+      "nextCursor": null
+    },
+    "rules": "200. Empty array if no links. Validate article ownership first. Sort entity createdAt + UUID, newest first. Main Entities page still requires exactly one selected type.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Add from identified page metadata",
+    "method": "POST",
+    "path": "/api/v1/articles/{articleId}/entities",
+    "request": "{\n  \"type\": \"BOOK\",\n  \"title\": \"Dune\"\n}",
+    "fields": "Explicit entity type/title for an owned article; preserve exact title. UI uses the identified/manually edited name. No dependency on deferred extraction.",
+    "response": {
+      "outcome": "LINKED",
+      "entity": {
+        "id": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+        "type": "BOOK",
+        "title": "Dune",
+        "status": "READ",
+        "createdAt": "2026-10-25T18:30:00Z",
+        "version": 1,
+        "lastCompletedAt": "2026-10-25T18:31:00Z",
+        "totalCompletionCount": 1
+      },
+      "link": {
+        "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+        "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+        "linkedAt": "2026-10-25T18:32:00Z"
+      }
+    },
+    "rules": "201 if a new entity is created, 200 if an exact owner/type/title entity is reused. Reuse existing entity/status/history, then ensure association exists atomically. Outcomes CREATED, LINKED or UNCHANGED. New entities start in initial status. Matching digest with different full title is a collision error, not reuse. Explicit Add required; editing page metadata alone never changes links.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Link an existing selected entity",
+    "method": "PUT",
+    "path": "/api/v1/articles/{articleId}/entities/{entityId}",
+    "request": "No body.",
+    "fields": "Both article and entity UUIDs must belong to current account. Unique article/entity pair.",
+    "response": {
+      "articleId": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+      "entityId": "a8db1852-613d-4c38-86db-43ea7bb8c430",
+      "linkedAt": "2026-10-25T18:32:00Z"
+    },
+    "rules": "201 for new link; 200 when already linked. Preserve original linkedAt on reuse. Do not change entity title/status/history or the captured article. This enables several entities per page and many pages per entity.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Unlink only this page/entity pair",
+    "method": "DELETE",
+    "path": "/api/v1/articles/{articleId}/entities/{entityId}",
+    "request": "No body.",
+    "fields": "Both parent resources must be owned. No arbitrary accountId.",
+    "response": "204 No Content",
+    "rules": "Delete one association only. Keep entity in its list, keep completion history, keep article, and keep other associations. Repeated unlink of a missing association is 204 when both parents exist and are owned; missing/foreign parent is 404. No general entity-delete API is introduced.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Read entity source pages",
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}/articles",
+    "request": "?limit=20&cursor=<opaque>",
+    "fields": "Owned entity UUID; article savedAt + UUID cursor, newest first; limit initially default 20/max 100, both configurable in application.yml.",
+    "response": {
+      "items": [
+        {
+          "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+          "url": "https://example.test/dune",
+          "title": "A guide to Dune",
+          "category": "BOOKS",
+          "entityName": "Dune",
+          "savedAt": "2026-10-25T18:29:00Z",
+          "version": 0,
+          "hasContent": true
+        }
+      ],
+      "nextCursor": null
+    },
+    "rules": "200. Article summaries only; open existing article detail for content. Manual entities can return an empty list. All joins enforce account ownership.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Approved: history edits/deletions preserve current status, version checks, exact-title SHA-256 uniqueness and configurable cursor limits (initial default 20/max 100). Initial statuses and case-insensitive entity-title search are approved. Remaining route/request/response details are contract drafts."
+  },
+  {
+    "title": "Edit captured page classification/name",
+    "method": "PATCH",
+    "path": "/api/v1/articles/{articleId}",
+    "request": "{\n  \"version\": 0,\n  \"category\": \"BOOKS\",\n  \"entityName\": \"Dune\"\n}",
+    "fields": "Extends existing PATCH; existing title/content rules stay. category: stable key from the authenticated account category catalog. entityName optional string; explicit null clears the label. version required. A single primary display category sets the node color; linked entities may include several types.",
+    "response": {
+      "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+      "url": "https://example.test/dune",
+      "title": "A guide to Dune",
+      "category": "BOOKS",
+      "entityName": "Dune",
+      "savedAt": "2026-10-25T18:29:00Z",
+      "content": "<p>Saved article.</p>",
+      "version": 1
+    },
+    "rules": "200. Validate and increment article version on actual change. Article GET/list include category and entityName. Existing records migrate to OTHER with null label; do not infer classification. Existing links remain untouched until explicit replacement. Replacement is explicit link/unlink actions; no silent retargeting.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Technical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation."
+  },
+  {
+    "title": "Filter and search the timeline",
+    "method": "GET",
+    "path": "/api/v1/articles",
+    "request": "?category=BOOKS&query=Dune&limit=20&cursor=<opaque>",
+    "fields": "category optional; omit for All categories. Use a stable key from the authenticated account category catalog. query optional literal case-insensitive substring over captured title, identified entity name and source URL; not article HTML. Existing limit initially default 20/max 100, both configurable in application.yml and savedAt + UUID cursor stay.",
+    "response": {
+      "items": [
+        {
+          "id": "0c3a83f0-d54a-4a5d-9f7c-b92e329d030a",
+          "url": "https://example.test/dune",
+          "title": "A guide to Dune",
+          "category": "BOOKS",
+          "entityName": "Dune",
+          "savedAt": "2026-10-25T18:29:00Z",
+          "version": 0,
+          "hasContent": true
+        }
+      ],
+      "nextCursor": null
+    },
+    "rules": "200. Scope by owner and filters in SQL before paging. Cursor is bound to the category/search filter set. Default no filters preserves Phase 1 listing behavior. No saved HTML in summaries. Filtering the timeline does not refetch or replace the currently open reader.",
+    "errors": "400 INVALID_REQUEST / INVALID_ENTITY_STATUS; 401 unauthenticated; 404 RESOURCE_NOT_FOUND for missing or foreign-owned resources; 409 VERSION_CONFLICT for stale writes; 409 DUPLICATE_ENTITY with existingEntityId for manual duplicate titles; 500 ENTITY_TITLE_HASH_COLLISION on a differing full title with the same digest. Retain Spring default timestamp/status/error/path fields and add reason; never expose another account’s ID or data.",
+    "review": "Technical contract draft for review. Approved product policies are preserved; exact routes, payloads and the noted technical choices require review before implementation."
+  },
+  {
+    "title": "Read category catalog",
+    "method": "GET",
+    "path": "/api/v1/categories",
+    "request": "No request body.",
+    "fields": "Returns the authenticated account category catalog, including stable key, display name, color, default/custom origin and enabled state.",
+    "response": {
+      "items": [
+        {
+          "key": "BOOKS",
+          "displayName": "Books",
+          "color": "#168e91",
+          "isDefault": true,
+          "enabled": true,
+          "createdAt": "2026-10-25T18:30:00Z",
+          "version": 0
+        }
+      ]
+    },
+    "rules": "200. Account-scoped records. Phase 2 seeds eight enabled defaults per account; filters, metadata editing and node colors consume these records. Entity types are separate. Category management is Phase 5.",
+    "errors": "401 unauthenticated. Retain Spring default error format.",
+    "review": "Read-only category contract draft. Management and referenced-category disable/removal behavior require Phase 5 review."
+  }
+]

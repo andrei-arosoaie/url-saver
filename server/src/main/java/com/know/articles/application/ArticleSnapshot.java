@@ -10,4 +10,17 @@ public record ArticleSnapshot(
     String title,
     String content,
     Instant savedAt,
-    long version) {}
+    long version,
+    String category,
+    String entityName) {
+  public ArticleSnapshot(
+      UUID id,
+      UUID accountId,
+      String url,
+      String title,
+      String content,
+      Instant savedAt,
+      long version) {
+    this(id, accountId, url, title, content, savedAt, version, "OTHER", null);
+  }
+}

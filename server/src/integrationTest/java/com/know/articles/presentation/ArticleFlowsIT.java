@@ -29,7 +29,8 @@ class ArticleFlowsIT extends BackendIntegrationSupport {
 
   @BeforeEach
   void fixtures() {
-    jdbc.execute("truncate articles, accounts");
+    jdbc.execute(
+        "truncate entity_completions, article_entities, entities, articles, categories, accounts");
     owner = UUID.randomUUID();
     other = UUID.randomUUID();
     for (var account : List.of(owner, other))

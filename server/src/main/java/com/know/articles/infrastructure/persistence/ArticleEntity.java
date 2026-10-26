@@ -29,6 +29,12 @@ public class ArticleEntity {
   @Column(columnDefinition = "text")
   private String content;
 
+  @Column(nullable = false)
+  private String category = "OTHER";
+
+  @Column(name = "identified_entity_name")
+  private String entityName;
+
   @Column(name = "saved_at", nullable = false)
   private Instant savedAt;
 
@@ -60,5 +66,11 @@ public class ArticleEntity {
   public void revise(String title, String content) {
     this.title = title;
     this.content = content;
+  }
+
+  public void revise(String title, String content, String category, String entityName) {
+    revise(title, content);
+    this.category = category;
+    this.entityName = entityName;
   }
 }

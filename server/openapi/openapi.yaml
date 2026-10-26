@@ -11,9 +11,11 @@ security:
 paths:
   /api/v1/articles:
     get:
-      description: "Newest first by savedAt descending, then UUID descending. No HTML\
-        \ or total count. Send nextCursor unchanged for Load more; null means the\
-        \ end. A cursor grants no account access."
+      description: "Newest first by savedAt descending, then UUID descending. Optional\
+        \ category and literal case-insensitive query over title, URL and entityName;\
+        \ filtering happens before pagination. No HTML or total count. Send nextCursor\
+        \ unchanged with the same filters; null means the end. A cursor grants no\
+        \ account access. Initial pagination defaults are configurable."
       operationId: listArticles
       parameters:
       - in: query
@@ -32,6 +34,16 @@ paths:
         schema:
           type: string
           maxLength: 256
+      - in: query
+        name: category
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -125,6 +137,268 @@ paths:
       summary: Save an article
       tags:
       - Articles
+  /api/v1/articles/{articleId}/entities:
+    get:
+      description: Newest entity createdAt/UUID first. Owner/article-bound cursor;
+        validate parent ownership even for an empty list.
+      operationId: listArticleEntities
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityPageResponseLinkedEntityResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Read entities linked to an owned article
+      tags:
+      - Article entities
+    post:
+      description: 201 CREATED for a new entity; 200 LINKED or UNCHANGED for exact
+        owner/type/title reuse. Preserve existing status/history. No automatic extraction
+        or metadata-driven relinking.
+      operationId: addArticleEntity
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddArticleEntityRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddEntityResponse"
+          description: Existing entity reused; link created or unchanged.
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddEntityResponse"
+          description: Entity created and linked.
+          headers:
+            Location:
+              schema:
+                type: string
+              style: simple
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Explicitly add an identified entity
+      tags:
+      - Article entities
+  /api/v1/articles/{articleId}/entities/{entityId}:
+    delete:
+      description: "Both parents must be owned. Preserve entity, article, history\
+        \ and all other source links. Repeated unlink returns 204. No entity-delete\
+        \ endpoint."
+      operationId: unlinkArticleEntity
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: entityId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Association removed or already absent.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Unlink only this article/entity pair
+      tags:
+      - Article entities
+    put:
+      description: "201 for a new pair, 200 for an existing pair. Preserve original\
+        \ linkedAt and both records."
+      operationId: linkArticleEntity
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: entityId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityLinkResponse"
+          description: Association already exists.
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityLinkResponse"
+          description: Association created.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Link an existing owned entity
+      tags:
+      - Article entities
   /api/v1/articles/{id}:
     get:
       description: "Returns sanitized HTML, or null content for a link-only save."
@@ -171,10 +445,12 @@ paths:
       tags:
       - Articles
     patch:
-      description: "Send the version read previously and title and/or content. Omitted\
-        \ fields stay unchanged. Null/blank content, URL changes and unknown fields\
-        \ are rejected. Version increments only for actual changes; no automatic conflict\
-        \ retry. The same configurable title/content limits apply."
+      description: "Send the version read previously and title, content, category\
+        \ and/or entityName. Omitted fields stay unchanged; explicit null clears only\
+        \ entityName. Category must be enabled for the account. Editing entityName\
+        \ never changes entity links. Null/blank content, URL changes and unknown\
+        \ fields are rejected. Version increments only for actual changes; no automatic\
+        \ conflict retry. The same configurable title/content limits apply."
       operationId: updateArticle
       parameters:
       - in: path
@@ -235,12 +511,740 @@ paths:
       summary: Explicitly update an article
       tags:
       - Articles
+  /api/v1/categories:
+    get:
+      operationId: list
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CatalogResponse"
+          description: OK
+      tags:
+      - category-controller
+  /api/v1/entities:
+    get:
+      description: "Newest createdAt/UUID first. Literal case-insensitive title search;\
+        \ status must belong to type. completionYear uses UTC completion history,\
+        \ independent of current status. Cursors are owner/filter-bound. Default 20/max\
+        \ 100; configurable in YAML."
+      operationId: listEntities
+      parameters:
+      - in: query
+        name: type
+        required: true
+        schema:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+      - in: query
+        name: query
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: completionYear
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityPageResponseEntitySummaryResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: List one entity type
+      tags:
+      - Entities
+    post:
+      description: Preserves exact title; owner/type/title duplicates return 409 DUPLICATE_ENTITY
+        with existingEntityId. Defaults to TO_READ / TO_BE_SEEN / TO_PLAY. Initial
+        completed status records a completion atomically.
+      operationId: createEntity
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEntityRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityResponse"
+          description: Entity created; Location identifies it.
+          headers:
+            Location:
+              schema:
+                type: string
+              style: simple
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Create a manual entity
+      tags:
+      - Entities
+  /api/v1/entities/years:
+    get:
+      description: Descending year. Counts distinct entities and all matching completion
+        events; creation dates never determine year grouping.
+      operationId: listCompletionYears
+      parameters:
+      - in: query
+        name: type
+        required: true
+        schema:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+      - in: query
+        name: query
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletionYearsResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: List UTC completion years and counts
+      tags:
+      - Entities
+  /api/v1/entities/{id}:
+    get:
+      description: Missing and foreign-owned resources both return 404 RESOURCE_NOT_FOUND.
+      operationId: getEntity
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Read an owned entity
+      tags:
+      - Entities
+    patch:
+      description: Expected JSON version required. Actual completion transitions append
+        history. Repeating completed status does not. No-op leaves version unchanged.
+        Type and creation time are immutable; stale writes return 409.
+      operationId: updateEntity
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditEntityRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Explicitly edit title or status
+      tags:
+      - Entities
+  /api/v1/entities/{id}/articles:
+    get:
+      description: "Owner/entity-bound cursor, savedAt/UUID newest first. Summaries\
+        \ only; manually created entities can have no sources."
+      operationId: listEntityArticles
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityPageResponseSourceArticleResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Read linked source articles
+      tags:
+      - Entities
+  /api/v1/entities/{id}/completions:
+    get:
+      description: Owner/entity-bound cursor; completedAt descending with UUID tie-breaker.
+        Exact timestamps and event creation times remain distinct.
+      operationId: listCompletions
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityPageResponseCompletionResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Read completion history
+      tags:
+      - Entities
+    post:
+      description: "Entity version required. Uses supplied timestamp or injected server\
+        \ UTC clock without a prompt. Always appends a distinct event and sets completed\
+        \ status atomically, including historical events."
+      operationId: addCompletion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCompletionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddCompletionResponse"
+          description: Completion created; Location identifies the history event.
+          headers:
+            Location:
+              schema:
+                type: string
+              style: simple
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Record another completion
+      tags:
+      - Entities
+  /api/v1/entities/{id}/completions/{eventId}:
+    delete:
+      description: Completion version required in query. Preserves current status
+        even after deleting the last event; derived counts/dates reflect remaining
+        history.
+      operationId: deleteCompletion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: version
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Only this completion was removed.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Remove one completion event
+      tags:
+      - Entities
+    patch:
+      description: "Completion version required. Preserves current status, creation\
+        \ time and other events. Actual history changes increment entity and completion\
+        \ versions; no-op changes neither."
+      operationId: correctCompletion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: eventId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorrectCompletionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletionResponse"
+          description: Successful owned response.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Correct a completion timestamp
+      tags:
+      - Entities
 components:
   schemas:
+    AddArticleEntityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+      required:
+      - title
+      - type
+    AddCompletionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - version
+    AddCompletionResponse:
+      type: object
+      properties:
+        completion:
+          $ref: "#/components/schemas/CompletionResponse"
+        entity:
+          $ref: "#/components/schemas/EntityResponse"
+      required:
+      - completion
+      - entity
+    AddEntityResponse:
+      type: object
+      properties:
+        entity:
+          $ref: "#/components/schemas/EntityResponse"
+        link:
+          $ref: "#/components/schemas/EntityLinkResponse"
+        outcome:
+          type: string
+          enum:
+          - CREATED
+          - LINKED
+          - UNCHANGED
+      required:
+      - entity
+      - link
+      - outcome
     ApiErrorResponse:
       type: object
       description: Spring Boot default error JSON with optional application reason
-        and duplicate article ID.
+        and duplicate resource ID.
       properties:
         error:
           type: string
@@ -248,14 +1252,19 @@ components:
           type: string
           format: uuid
           description: Present only for DUPLICATE_URL.
+        existingEntityId:
+          type: string
+          format: uuid
+          description: Present only for DUPLICATE_ENTITY.
         message:
           type: string
         path:
           type: string
         reason:
           type: string
-          description: "INVALID_REQUEST, UNAUTHENTICATED, ARTICLE_NOT_FOUND, DUPLICATE_URL,\
-            \ VERSION_CONFLICT, CONTENT_TOO_LARGE or URL_HASH_COLLISION."
+          description: "INVALID_REQUEST, INVALID_ENTITY_STATUS, UNAUTHENTICATED, ARTICLE_NOT_FOUND,\
+            \ RESOURCE_NOT_FOUND, DUPLICATE_URL, DUPLICATE_ENTITY, VERSION_CONFLICT,\
+            \ CONTENT_TOO_LARGE, URL_HASH_COLLISION or ENTITY_TITLE_HASH_COLLISION."
         status:
           type: integer
           format: int32
@@ -285,11 +1294,17 @@ components:
     ArticleResponse:
       type: object
       properties:
+        category:
+          type: string
         content:
           type:
           - string
           - "null"
           description: Sanitized article HTML; null means link-only.
+        entityName:
+          type:
+          - string
+          - "null"
         id:
           type: string
           format: uuid
@@ -305,7 +1320,9 @@ components:
           format: int64
           minimum: 0
       required:
+      - category
       - content
+      - entityName
       - id
       - savedAt
       - title
@@ -314,6 +1331,12 @@ components:
     ArticleSummaryResponse:
       type: object
       properties:
+        category:
+          type: string
+        entityName:
+          type:
+          - string
+          - "null"
         hasContent:
           type: boolean
         id:
@@ -331,11 +1354,347 @@ components:
           format: int64
           minimum: 0
       required:
+      - category
+      - entityName
       - hasContent
       - id
       - savedAt
       - title
       - url
+      - version
+    CatalogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryResponse"
+    CategoryResponse:
+      type: object
+      properties:
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+        isDefault:
+          type: boolean
+        key:
+          type: string
+        version:
+          type: integer
+          format: int64
+    CompletionResponse:
+      type: object
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        entityId:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+      required:
+      - completedAt
+      - createdAt
+      - entityId
+      - id
+      - version
+    CompletionYearResponse:
+      type: object
+      properties:
+        completionCount:
+          type: integer
+          format: int64
+        entityCount:
+          type: integer
+          format: int64
+        year:
+          type: integer
+          format: int32
+      required:
+      - completionCount
+      - entityCount
+      - year
+    CompletionYearsResponse:
+      type: object
+      properties:
+        years:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompletionYearResponse"
+      required:
+      - years
+    CorrectCompletionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - completedAt
+      - version
+    CreateEntityRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+      required:
+      - title
+      - type
+    EditEntityRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 2
+      properties:
+        completedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        title:
+          type: string
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - version
+    EntityLinkResponse:
+      type: object
+      properties:
+        articleId:
+          type: string
+          format: uuid
+        entityId:
+          type: string
+          format: uuid
+        linkedAt:
+          type: string
+          format: date-time
+      required:
+      - articleId
+      - entityId
+      - linkedAt
+    EntityPageResponseCompletionResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompletionResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    EntityPageResponseEntitySummaryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntitySummaryResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    EntityPageResponseLinkedEntityResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedEntityResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    EntityPageResponseSourceArticleResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceArticleResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+      required:
+      - items
+      - nextCursor
+    EntityResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        lastCompletedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        status:
+          type: string
+        title:
+          type: string
+        totalCompletionCount:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+        version:
+          type: integer
+          format: int64
+      required:
+      - createdAt
+      - id
+      - lastCompletedAt
+      - status
+      - title
+      - totalCompletionCount
+      - type
+      - version
+    EntitySummaryResponse:
+      type: object
+      properties:
+        completionCount:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        lastCompletedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        latestMatchingCompletionAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        status:
+          type: string
+        title:
+          type: string
+        totalCompletionCount:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+        version:
+          type: integer
+          format: int64
+      required:
+      - completionCount
+      - createdAt
+      - id
+      - lastCompletedAt
+      - latestMatchingCompletionAt
+      - status
+      - title
+      - totalCompletionCount
+      - type
+      - version
+    LinkedEntityResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        lastCompletedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        linkedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        title:
+          type: string
+        totalCompletionCount:
+          type: integer
+          format: int64
+        type:
+          type: string
+          enum:
+          - BOOK
+          - MOVIE
+          - TV_SHOW
+          - GAME
+        version:
+          type: integer
+          format: int64
+      required:
+      - createdAt
+      - id
+      - lastCompletedAt
+      - linkedAt
+      - status
+      - title
+      - totalCompletionCount
+      - type
       - version
     SaveArticleRequest:
       type: object
@@ -371,15 +1730,55 @@ components:
       required:
       - article
       - outcome
+    SourceArticleResponse:
+      type: object
+      properties:
+        category:
+          type: string
+        entityName:
+          type:
+          - string
+          - "null"
+        hasContent:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        url:
+          type: string
+        version:
+          type: integer
+          format: int64
+      required:
+      - category
+      - entityName
+      - hasContent
+      - id
+      - savedAt
+      - title
+      - url
+      - version
     UpdateArticleRequest:
       type: object
       additionalProperties: false
-      description: Supply title and/or content; omission preserves the stored value.
-        Null values and URL changes are rejected.
+      description: "Supply title, content, category and/or entityName. Omission preserves\
+        \ the stored value. Explicit null clears only entityName. URL changes and\
+        \ other null values are rejected."
       minProperties: 2
       properties:
+        category:
+          type: string
         content:
           type: string
+        entityName:
+          type:
+          - string
+          - "null"
         title:
           type: string
         version:

@@ -1,0 +1,80 @@
+* {
+  box-sizing: border-box;
+}
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f7fc;
+  --panel: #fff;
+  --ink: #17233d;
+  --muted: #66738d;
+  --line: #dce3ef;
+  --soft: #edf4ff;
+  --accent: #1660ec;
+  --error: #a32d3b;
+  --curve: #abcaff;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111827;
+  --panel: #182235;
+  --ink: #e8efff;
+  --muted: #a6b5d1;
+  --line: #34435c;
+  --soft: #203453;
+  --accent: #8bb6ff;
+  --error: #f59ca4;
+  --curve: #5273a5;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111827;
+    --panel: #182235;
+    --ink: #e8efff;
+    --muted: #a6b5d1;
+    --line: #34435c;
+    --soft: #203453;
+    --accent: #8bb6ff;
+    --error: #f59ca4;
+    --curve: #5273a5;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    15px/1.55 system-ui,
+    sans-serif;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+a {
+  color: var(--accent);
+}
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+::selection {
+  background: #b8d0fa;
+}
+svg {
+  flex-shrink: 0;
+}

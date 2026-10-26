@@ -12,6 +12,24 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 interface ArticleJpaRepository extends JpaRepository<ArticleEntity, UUID> {
+  boolean existsByIdAndAccountId(UUID id, UUID accountId);
+
+  @Query(
+      value =
+          """
+      select a.id as id, a.url as url, a.title as title, a.saved_at as "savedAt",
+        a.version as version, (a.content is not null) as "hasContent",
+        a.category as category, a.identified_entity_name as "entityName"
+      from articles a join article_entities l on l.article_id=a.id and l.account_id=a.account_id
+      where a.account_id=:accountId and l.entity_id=:entityId
+        and (cast(:savedAt as timestamptz) is null or a.saved_at < :savedAt
+          or (a.saved_at=:savedAt and a.id < :id))
+      order by a.saved_at desc,a.id desc
+      """,
+      nativeQuery = true)
+  List<ArticleSummaryRow> findLinkedToEntity(
+      UUID accountId, UUID entityId, Instant savedAt, UUID id, Pageable page);
+
   @Modifying
   @Query(
       value =
@@ -45,7 +63,8 @@ interface ArticleJpaRepository extends JpaRepository<ArticleEntity, UUID> {
   @Query(
       """
       select a.id as id, a.url as url, a.title as title, a.savedAt as savedAt,
-        a.version as version, (a.content is not null) as hasContent
+        a.version as version, (a.content is not null) as hasContent,
+        a.category as category, a.entityName as entityName
       from ArticleEntity a where a.accountId = :accountId
       order by a.savedAt desc, a.id desc
       """)
@@ -54,7 +73,8 @@ interface ArticleJpaRepository extends JpaRepository<ArticleEntity, UUID> {
   @Query(
       """
       select a.id as id, a.url as url, a.title as title, a.savedAt as savedAt,
-        a.version as version, (a.content is not null) as hasContent
+        a.version as version, (a.content is not null) as hasContent,
+        a.category as category, a.entityName as entityName
       from ArticleEntity a where a.accountId = :accountId
         and (a.savedAt < :savedAt or (a.savedAt = :savedAt and a.id < :id))
       order by a.savedAt desc, a.id desc

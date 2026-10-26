@@ -1,0 +1,42 @@
+erDiagram
+  ACCOUNTS ||--o{ CATEGORIES : owns
+  CATEGORIES ||--o{ ARTICLES : classifies
+  CATEGORIES {
+    uuid account_id PK,FK
+    text key PK
+    text display_name
+    text color
+    boolean is_default
+    boolean enabled
+    timestamptz created_at
+    bigint version
+  }
+  ACCOUNTS ||--o{ ARTICLES : owns
+  ACCOUNTS ||--o{ ENTITIES : owns
+  ARTICLES ||--o{ ARTICLE_ENTITIES : has
+  ENTITIES ||--o{ ARTICLE_ENTITIES : linked_from
+  ENTITIES ||--o{ ENTITY_COMPLETIONS : completed
+  ENTITIES {
+    uuid id PK
+    uuid account_id FK
+    text type
+    text title
+    bytea title_hash
+    text status
+    timestamptz created_at
+    bigint version
+  }
+  ARTICLE_ENTITIES {
+    uuid account_id FK
+    uuid article_id PK,FK
+    uuid entity_id PK,FK
+    timestamptz linked_at
+  }
+  ENTITY_COMPLETIONS {
+    uuid id PK
+    uuid account_id FK
+    uuid entity_id FK
+    timestamptz completed_at
+    timestamptz created_at
+    bigint version
+  }

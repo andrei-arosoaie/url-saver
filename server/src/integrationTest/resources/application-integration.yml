@@ -27,6 +27,6 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
-  paths-to-match: /api/v1/articles/**
+  paths-to-match: /api/v1/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

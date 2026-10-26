@@ -1,5 +1,7 @@
 # Know server
 
+Build the responsive webapp first: from `webapp`, run `npm ci` and `npm run build`. Gradle packages its generated assets into the same Spring Boot JAR and serves the library at `/`. Run backend Gradle commands sequentially when sharing the build directory between Windows and WSL.
+
 Spring Boot 4.1.2, Temurin Java 27, Gradle 9.8.2; PostgreSQL 17.11 Alpine for development/tests.
 
 ## Implemented
@@ -11,8 +13,26 @@ Spring Boot 4.1.2, Temurin Java 27, Gradle 9.8.2; PostgreSQL 17.11 Alpine for de
 - Sanitized HTML only: preserve article prose, remove executable markup and images. Configurable UTF-8 content and Unicode title limits; reject without truncation.
 - Flyway schema, per-account exact-URL SHA-256 uniqueness, database hash verification, transactional concurrency protection and version locking.
 
-All four article endpoints and the Firefox capture client are implemented. The responsive webpage and real authentication come later. See ../extension/firefox/README.md for client checks and current limitations. This functionality-only iteration enables one shared temporary account via know.temporary-account.enabled in application.yml. Unauthenticated requests use account 00000000-0000-4000-8000-000000000001; it is created automatically. Setting enabled=false restores the authentication requirement. An authenticated UUID principal still takes precedence.
+All four article endpoints and the Firefox capture client are implemented. The responsive webpage is implemented in ../webapp and served from this same application. Real authentication comes later. See ../extension/firefox/README.md for client checks and current limitations. This functionality-only iteration enables one shared temporary account via know.temporary-account.enabled in application.yml. Unauthenticated requests use account 00000000-0000-4000-8000-000000000001; it is created automatically. Setting enabled=false restores the authentication requirement. An authenticated UUID principal still takes precedence.
 
+## Entities backend
+
+- `/api/v1/entities`: GET one required type with search/status/completion-year filters and cursor pagination; POST manual creation.
+- `/api/v1/entities/{id}`: GET details; PATCH an explicit versioned title/status change.
+- `/api/v1/entities/years`: GET UTC completion years with distinct entity and event counts.
+- `/api/v1/entities/{id}/completions`: GET paginated history; POST a distinct completion using the entity version.
+- `/api/v1/entities/{id}/completions/{eventId}`: PATCH a timestamp or DELETE one event using its completion version.
+- `/api/v1/articles/{articleId}/entities`: GET linked entities; POST explicit exact-title/type create-or-reuse.
+- `/api/v1/articles/{articleId}/entities/{entityId}`: PUT an existing entity link; DELETE only that association.
+- `/api/v1/entities/{id}/articles`: GET paginated source summaries; article content remains on the article-detail endpoint.
+
+Types are BOOK, MOVIE, TV_SHOW and GAME. Status transitions into READ/SEEN/FINISHED append history atomically; repeated unchanged status does not. Explicit completion uses the feature-local UTC Clock when a timestamp is omitted. Correcting/deleting history preserves current status and increments the parent version only for an actual change. Article labels never implicitly relink or rename entities. No general entity-delete route exists.
+
+Exact unmodified titles use per-owner/type SHA-256 uniqueness, verified by PostgreSQL and full-title comparison. Entity mutations use a transaction-scoped advisory lock per account, plus database uniqueness and version checks, so concurrent creates/renames cannot bypass identity rules. Different accounts do not share this lock. List filtering uses Criteria before SQL pagination; completion statistics are batched rather than fetched implicitly through ORM associations.
+
+Settings: `know.entities.max-title-code-points` (1000); `know.pagination.default-limit` (20) and `max-limit` (100). Migration V2 contains the entity tables. V3 adds the AI category to existing accounts; new accounts receive all eight category defaults. See [the exported API contract](openapi/openapi.yaml) for complete payloads and responses.
+
+`EntityFlowsIT` verifies complete real HTTP/application/PostgreSQL flows, including capture-to-entity, manual creation, linking, version conflicts, completion history, UTC-year queries, correction/deletion, unlink preservation, ownership and concurrent writes. Unit tests verify injected clock behavior, Unicode title limits, invalid transitions and hash-collision refusal. These tests reuse the same context/container as the article tests.
 ## Verify
 
 From the workspace root, run .\server\verify-wsl.ps1. It uses Debian_Recovered WSL Docker, the checksum-pinned Gradle wrapper and a digest-pinned Java image. No Windows Docker installation or TCP exposure is required. Override the distribution with -Distribution if needed.

@@ -8,13 +8,15 @@ import java.io.IOException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = ArticleController.class)
+@RestControllerAdvice
 public class ArticleErrors {
-  @ExceptionHandler(ArticleFailure.class)
+  @ExceptionHandler(com.know.shared.application.RequestFailure.class)
   public void failure(
-      ArticleFailure failure, HttpServletRequest request, HttpServletResponse response)
+      com.know.shared.application.RequestFailure failure,
+      HttpServletRequest request,
+      HttpServletResponse response)
       throws IOException {
-    request.setAttribute(ArticleFailure.class.getName(), failure);
+    request.setAttribute(com.know.shared.application.RequestFailure.class.getName(), failure);
     response.sendError(failure.getStatus(), failure.getMessage());
   }
 
