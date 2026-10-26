@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "package:dev": "node scripts/package-development.mjs",
     "generate": "openapi-typescript ../../server/openapi/openapi.yaml -o src/generated/api.d.ts",
     "postinstall": "wxt prepare",
     "build": "npm run generate && wxt build -b firefox --mv3",

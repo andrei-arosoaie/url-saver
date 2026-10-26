@@ -1,16 +1,29 @@
-# Firefox extension and temporary-account saving
+# Implementation status
 
-Current iteration: article saving without authentication, using one explicitly approved shared temporary account. Google sign-in remains out of scope.
+Phase 2 Timeline and Entities are implemented locally on feature/webapp-library. Render deployment is separate from this implementation.
 
-- All four article endpoints are implemented: save, explicit versioned update, read, and cursor-paginated list.
-- know.temporary-account.enabled is true in application.yml. Account UUID: 00000000-0000-4000-8000-000000000001. It is created automatically; the server assigns ownership. All unauthenticated installations share these articles. Setting enabled=false restores the authentication requirement; authenticated accounts take precedence.
-- Temporary-account provisioning uses its own transaction so read-only article operations can safely resolve the account. Existing account data is never overwritten.
-- The Firefox extension captures URL/title/Readability HTML, sends saves without requiring a token, confirms results, prompts for duplicates and uses versioned explicit updates. No persistent capture queue.
+## Working functionality
 
-Verification: 42 backend tests passed (18 unit/architecture; 24 integration), with all ITs sharing one context and real disposable PostgreSQL through Debian WSL Docker. Full temporary-account HTTP flow covers save, read, duplicate rejection, explicit update, list and persisted ownership/content. OpenAPI drift check and packaging pass.
+- Firefox saves URL, title and Readability HTML through the approved temporary account. Duplicate confirmation and explicit versioned updates preserve existing content.
+- The responsive React webapp is served by Spring Boot. Timeline supports category/search filters, reading, versioned metadata edits, browser navigation and system/light/dark themes.
+- Entities supports Book/Movie/TV show/Game, Table/Board/By year, manual creation, versioned title/status edits, repeated completions, precise UTC history correction/removal and linked source pages.
+- Timeline Add/Remove links or unlinks an entity without deleting either record or completion history.
+- AI is included in the eight-category catalog. Supabase public has migrations V2 and V3 applied; existing article content is preserved.
 
-Extension: 20 tests, type checks, ESLint, Prettier and production Firefox build pass. Mozilla validation has no errors and four documented bundled-dependency warnings. Actual desktop/Android device verification remains outstanding.
+- Renaming an article or entity preserves every existing association. Links use stable IDs and change only through explicit link/unlink actions.
 
-Updated local container know-server:temporary-account passes the PostgreSQL smoke test, including unauthenticated saving and persisted content under 512 MiB / 1 CPU. This image has not been published or deployed to Render. Render must receive the updated image before the rebuilt extension can use temporary-account saving there.
+## Verification
 
-Next review checkpoint: Firefox extension. Responsive webpage and real security remain unimplemented. Startup target remains under five seconds to save-ready; the earlier local Supabase startup measured 11.6 seconds and is not a save-ready benchmark.
+- Backend: 58 passing tests (24 unit/architecture, 34 integration), one shared Spring context and disposable PostgreSQL through Debian WSL Docker. Integration tests exercise complete HTTP/application/database flows, concurrency, ownership, versions, history, links, filtering and constraints. OpenAPI drift and JAR packaging pass.
+- Webapp: 61 passing tests; generated types, TypeScript, ESLint, Prettier and production build pass.
+- Firefox: 21 passing tests; generated types, TypeScript, ESLint, Prettier and production build pass.
+- Browser verification against disposable PostgreSQL covers desktop/mobile views, manual creation, status transitions, repeated and historical completions, microsecond timestamp correction, version conflicts, source navigation and Add/Remove preservation. No test entities, history or links were written to Supabase.
+- Live Supabase verification: eight real saved articles and all eight categories loaded; Entities returned its genuine empty state. No sample records were inserted.
+- Supabase preview: http://127.0.0.1:18084, process 20992. This is local; Render still runs the earlier 6509809 build.
+
+## Remaining
+
+- Renaming an article or entity preserves every existing association. Links use stable IDs and change only through explicit link/unlink actions.
+- Timeline excerpts await a product decision; the current list API supplies no excerpt.
+- Real authentication and Firefox desktop/Android device verification remain outstanding.
+- Startup remains above the under-five-second target; the prior Supabase startup reported 10.41 seconds. This is not a save-ready benchmark.

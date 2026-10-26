@@ -42,11 +42,26 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 sourceSets {
+    main { resources.srcDir layout.buildDirectory.dir('webapp-resources') }
     integrationTest {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
 }
+
+def webappEntry = layout.projectDirectory.file('../webapp/dist/index.html')
+tasks.register('verifyWebappBuild') {
+    inputs.file(webappEntry).optional()
+    doLast {
+        if (!webappEntry.asFile.exists()) throw new GradleException('Build the webapp first: cd webapp && npm ci && npm run build')
+    }
+}
+tasks.register('syncWebapp', Sync) {
+    dependsOn 'verifyWebappBuild'
+    from '../webapp/dist'
+    into layout.buildDirectory.dir('webapp-resources/static')
+}
+tasks.named('processResources') { dependsOn 'syncWebapp' }
 configurations {
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly

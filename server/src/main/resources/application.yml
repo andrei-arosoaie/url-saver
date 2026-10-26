@@ -26,6 +26,11 @@ logging:
     format:
       console: ecs
 know:
+  entities:
+    max-title-code-points: 1000
+  pagination:
+    default-limit: 20
+    max-limit: 100
   temporary-account:
     # Temporary shared account for the current functionality-only iteration.
     enabled: true
@@ -51,6 +56,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
-  paths-to-match: /api/v1/articles/**
+  paths-to-match: /api/v1/**
   writer-with-order-by-keys: true
   override-with-generic-response: false

@@ -60,6 +60,7 @@ until curl -fsS --max-time 2 "$address/actuator/health/liveness" 2>/dev/null | g
   if [ "$(docker inspect "$application" --format '{{.State.Running}}')" != true ]; then docker logs "$application"; exit 1; fi
   sleep 1
 done
+curl -fsS "$address/" | grep -q 'id="root"'
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/api/v1/articles")" = 200 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' --data '{"url":"https://example.test/image-smoke","title":"Image smoke article","content":"<p>Saved through the real container API.</p>"}' "$address/api/v1/articles")" = 201 ]
 curl -fsS "$address/api/v1/articles" | grep -q 'Image smoke article'

@@ -17,6 +17,14 @@ jobs:
           distribution: temurin
           java-version: '27'
           cache: gradle
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Verify and build the webapp
+        working-directory: webapp
+        run: npm ci && npm run check
       - name: Verify backend and build application
         working-directory: server
         run: sh ./gradlew --no-daemon check bootJar

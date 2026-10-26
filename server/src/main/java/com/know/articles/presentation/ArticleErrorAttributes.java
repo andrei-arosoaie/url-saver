@@ -18,7 +18,15 @@ public class ArticleErrorAttributes extends DefaultErrorAttributes {
       attributes.put("message", "Invalid request.");
     }
     var failure =
-        request.getAttribute(ArticleFailure.class.getName(), RequestAttributes.SCOPE_REQUEST);
+        request.getAttribute(
+            com.know.shared.application.RequestFailure.class.getName(),
+            RequestAttributes.SCOPE_REQUEST);
+    if (failure instanceof com.know.shared.application.RequestFailure common) {
+      attributes.put("reason", common.getReason());
+      attributes.put("message", common.getMessage());
+      if (common.getExistingEntityId() != null)
+        attributes.put("existingEntityId", common.getExistingEntityId());
+    }
     if (failure instanceof ArticleFailure articleFailure) {
       attributes.put("reason", articleFailure.getReason());
       attributes.put("message", articleFailure.getMessage());

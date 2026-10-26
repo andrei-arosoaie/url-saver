@@ -3,10 +3,12 @@ on:
   pull_request:
     paths:
       - 'server/**'
+      - 'webapp/**'
       - '.github/workflows/server-checks.yml'
   push:
     paths:
       - 'server/**'
+      - 'webapp/**'
       - '.github/workflows/server-checks.yml'
   workflow_dispatch:
 permissions:
@@ -27,6 +29,14 @@ jobs:
           distribution: temurin
           java-version: '27'
           cache: gradle
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Build the webapp served by Spring Boot
+        working-directory: webapp
+        run: npm ci && npm run build
       - name: Enable Gradle wrapper
         run: chmod +x gradlew
       - name: Verify Render deployment orchestration with fake HTTP responses

@@ -29,6 +29,31 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Import(BackendIntegrationSupport.AuthenticationFixture.class)
 @ResourceLock("backend-integration-database")
 public abstract class BackendIntegrationSupport {
+  @Autowired protected com.know.categories.application.CategoryCatalog categoryFixtures;
+  @Autowired protected TestClock entityTestClock;
+
+  public static class TestClock extends java.time.Clock {
+    private final java.util.concurrent.atomic.AtomicReference<java.time.Instant> time =
+        new java.util.concurrent.atomic.AtomicReference<>(
+            java.time.Instant.parse("2026-10-25T18:30:00Z"));
+
+    public void set(java.time.Instant value) {
+      time.set(value);
+    }
+
+    public java.time.Instant instant() {
+      return time.get();
+    }
+
+    public java.time.ZoneId getZone() {
+      return java.time.ZoneOffset.UTC;
+    }
+
+    public java.time.Clock withZone(java.time.ZoneId zone) {
+      return java.time.Clock.fixed(instant(), zone);
+    }
+  }
+
   // JVM-scoped rather than JUnit class-scoped: a cached context must keep its database alive.
   // Testcontainers/Ryuk cleans up this disposable container when the test JVM exits.
   private static final PostgreSQLContainer POSTGRES = startDatabase();
@@ -57,6 +82,12 @@ public abstract class BackendIntegrationSupport {
 
   @TestConfiguration
   public static class AuthenticationFixture {
+    @Bean
+    @org.springframework.context.annotation.Primary
+    TestClock entityTestClock() {
+      return new TestClock();
+    }
+
     @Bean
     Filter fixtureAuthentication() {
       return (request, response, chain) -> {

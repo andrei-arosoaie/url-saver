@@ -15,4 +15,8 @@ public interface ArticleSummaryRow {
   Long getVersion();
 
   boolean getHasContent();
+
+  String getCategory();
+
+  String getEntityName();
 }

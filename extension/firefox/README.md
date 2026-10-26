@@ -1,5 +1,13 @@
 # Know Firefox extension
 
+## Android development package
+
+Run `build-development.cmd` from this folder, or `npm run package:dev`.
+Dependencies must be installed first with `npm ci`.
+Copy `.output/know-development.xpi` to your phone. This is an unsigned
+development package for Firefox Nightly with signature enforcement disabled.
+The script rebuilds the extension before creating the XPI; it does not sign or publish it.
+
 WXT, React, TypeScript and Mozilla Readability. Supports Firefox desktop and Android; private browsing is disabled.
 
 ## Build and check

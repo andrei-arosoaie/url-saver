@@ -42,6 +42,14 @@ public class JpaArticleWriter implements ArticleWriter {
     return mapper.toSnapshot(entity);
   }
 
+  public ArticleSnapshot revise(
+      UUID accountId, UUID id, String title, String content, String category, String entityName) {
+    var entity = owned(accountId, id);
+    entity.revise(title, content, category, entityName);
+    repository.flush();
+    return mapper.toSnapshot(entity);
+  }
+
   private ArticleEntity owned(UUID accountId, UUID id) {
     return repository
         .lockOwned(accountId, id)

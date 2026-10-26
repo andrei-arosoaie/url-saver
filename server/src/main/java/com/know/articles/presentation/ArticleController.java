@@ -1,6 +1,7 @@
 package com.know.articles.presentation;
 
 import com.know.articles.application.*;
+import com.know.shared.presentation.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -38,13 +39,15 @@ public class ArticleController {
   private final ArticleQueries queries;
   private final ArticleApiMapper mapper;
   private final ArticleCursor cursors;
+  private final com.know.accounts.application.CurrentAccount currentAccount;
+  private final com.know.shared.application.PageLimits limits;
 
   @GetMapping
   @Operation(
       operationId = "listArticles",
       summary = "List saved article summaries",
       description =
-          "Newest first by savedAt descending, then UUID descending. No HTML or total count. Send nextCursor unchanged for Load more; null means the end. A cursor grants no account access.")
+          "Newest first by savedAt descending, then UUID descending. Optional category and literal case-insensitive query over title, URL and entityName; filtering happens before pagination. No HTML or total count. Send nextCursor unchanged with the same filters; null means the end. A cursor grants no account access. Initial pagination defaults are configurable.")
   @ApiResponse(
       responseCode = "200",
       description = "Owned summaries and the next bookmark.",
@@ -58,17 +61,29 @@ public class ArticleController {
                       minimum = "1",
                       maximum = "100",
                       defaultValue = "20"))
-          @RequestParam(defaultValue = "20")
-          int limit,
+          @RequestParam(required = false)
+          Integer limit,
       @Parameter(
               description = "Opaque bookmark from the preceding page.",
               schema = @Schema(maxLength = 256))
           @RequestParam(required = false)
-          String cursor) {
-    var batch = queries.list(cursors.decode(cursor), limit);
+          String cursor,
+      @RequestParam(required = false) String category,
+      @RequestParam(required = false) String query) {
+    var scope =
+        com.know.shared.application.ScopedCursor.scope(currentAccount.requireId(), category, query);
+    var filtered = category != null || query != null;
+    var batch =
+        queries.list(
+            filtered ? cursors.decode(cursor, scope) : cursors.decode(cursor),
+            limit == null ? limits.defaultLimit() : limit,
+            category,
+            query);
     return new ArticlePageResponse(
         batch.items().stream().map(mapper::toResponse).toList(),
-        cursors.encode(batch.nextPosition()));
+        filtered
+            ? cursors.encode(batch.nextPosition(), scope)
+            : cursors.encode(batch.nextPosition()));
   }
 
   @GetMapping("/{id}")
@@ -130,7 +145,7 @@ public class ArticleController {
       operationId = "updateArticle",
       summary = "Explicitly update an article",
       description =
-          "Send the version read previously and title and/or content. Omitted fields stay unchanged. Null/blank content, URL changes and unknown fields are rejected. Version increments only for actual changes; no automatic conflict retry. The same configurable title/content limits apply.")
+          "Send the version read previously and title, content, category and/or entityName. Omitted fields stay unchanged; explicit null clears only entityName. Category must be enabled for the account. Editing entityName never changes entity links. Null/blank content, URL changes and unknown fields are rejected. Version increments only for actual changes; no automatic conflict retry. The same configurable title/content limits apply.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",

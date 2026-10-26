@@ -1,7 +1,3 @@
 package com.know.articles.application;
 
-import java.util.UUID;
-
-public interface CurrentAccount {
-  UUID requireId();
-}
+public interface CurrentAccount extends com.know.accounts.application.CurrentAccount {}

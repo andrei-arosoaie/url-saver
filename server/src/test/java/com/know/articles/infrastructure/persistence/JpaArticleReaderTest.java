@@ -31,7 +31,9 @@ class JpaArticleReaderTest {
             Instant.EPOCH);
     when(repository.findByAccountIdAndUrlHash(eq(accountId), any(byte[].class)))
         .thenReturn(Optional.of(existing));
-    var reader = new JpaArticleReader(repository, mapper, hasher);
+    var reader =
+        new JpaArticleReader(
+            repository, mapper, hasher, mock(jakarta.persistence.EntityManager.class));
     assertThatThrownBy(() -> reader.findExactUrl(accountId, requestedUrl))
         .isInstanceOf(UrlHashCollisionException.class);
     verifyNoInteractions(mapper);

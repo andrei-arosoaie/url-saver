@@ -21,13 +21,41 @@ class OpenApiContractIT extends BackendIntegrationSupport {
   private final JsonMapper json = JsonMapper.builder().build();
 
   @Test
-  void publishesAndExportsTheFourRealArticleContractsAsDeterministicYaml() throws Exception {
+  void publishesAndExportsRealArticleCategoryAndEntityContractsAsDeterministicYaml()
+      throws Exception {
     var response = get("/v3/api-docs");
     assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
     var document = json.readTree(response.body());
     assertThat(document.get("servers").get(0).get("url").asText()).isEqualTo("/");
     var paths = document.get("paths");
-    assertThat(paths.size()).isEqualTo(2);
+    assertThat(paths.size()).isEqualTo(11);
+    for (var path :
+        List.of(
+            "/api/v1/entities",
+            "/api/v1/entities/{id}",
+            "/api/v1/entities/years",
+            "/api/v1/entities/{id}/completions",
+            "/api/v1/entities/{id}/completions/{eventId}",
+            "/api/v1/entities/{id}/articles",
+            "/api/v1/articles/{articleId}/entities",
+            "/api/v1/articles/{articleId}/entities/{entityId}"))
+      assertThat(paths.has(path)).as(path).isTrue();
+    assertThat(paths.get("/api/v1/entities").get("post").get("operationId").asText())
+        .isEqualTo("createEntity");
+    assertThat(paths.get("/api/v1/entities").get("post").get("responses").has("409")).isTrue();
+    assertThat(
+            paths
+                .get("/api/v1/entities")
+                .get("post")
+                .get("responses")
+                .get("201")
+                .get("headers")
+                .has("Location"))
+        .isTrue();
+    assertThat(paths.get("/api/v1/entities/{id}").get("get").get("responses").has("404")).isTrue();
+    assertThat(paths.get("/api/v1/entities/{id}/completions/{eventId}").has("delete")).isTrue();
+    assertThat(paths.get("/api/v1/articles/{articleId}/entities/{entityId}").has("put")).isTrue();
+    assertThat(paths.get("/api/v1/categories").has("get")).isTrue();
     var collection = paths.get("/api/v1/articles");
     var detail = paths.get("/api/v1/articles/{id}");
     assertThat(collection.has("get")).isTrue();
@@ -45,6 +73,28 @@ class OpenApiContractIT extends BackendIntegrationSupport {
     assertThat(detail.get("patch").get("responses").has("409")).isTrue();
     assertThat(detail.get("get").get("responses").has("404")).isTrue();
     var schemas = document.get("components").get("schemas");
+    for (var path :
+        List.of(
+            "/api/v1/entities",
+            "/api/v1/entities/{id}",
+            "/api/v1/entities/years",
+            "/api/v1/entities/{id}/completions",
+            "/api/v1/entities/{id}/articles",
+            "/api/v1/articles/{articleId}/entities")) {
+      assertThat(
+              paths
+                  .get(path)
+                  .get("get")
+                  .get("responses")
+                  .get("200")
+                  .get("content")
+                  .has("application/json"))
+          .as(path)
+          .isTrue();
+    }
+    assertThat(schemas.has("EntitySummaryResponse")).isTrue();
+    assertThat(schemas.get("EntitySummaryResponse").get("properties").has("completionCount"))
+        .isTrue();
     var update = schemas.get("UpdateArticleRequest");
     assertThat(update.get("minProperties").asInt()).isEqualTo(2);
     assertThat(update.get("required").toString())
@@ -70,6 +120,11 @@ class OpenApiContractIT extends BackendIntegrationSupport {
         .contains("\"string\"", "\"null\"");
     assertThat(schemas.get("ApiErrorResponse").get("properties").has("reason")).isTrue();
     assertThat(schemas.get("ApiErrorResponse").get("properties").has("existingArticleId")).isTrue();
+    assertThat(schemas.get("ApiErrorResponse").get("properties").has("existingEntityId")).isTrue();
+    assertThat(schemas.get("CreateEntityRequest").get("required").toString())
+        .contains("type", "title");
+    assertThat(schemas.get("CorrectCompletionRequest").get("required").toString())
+        .contains("version", "completedAt");
     var yaml = get("/v3/api-docs.yaml");
     assertThat(yaml.statusCode()).as(yaml.body()).isEqualTo(200);
     var normalized = yaml.body().replace("\r\n", "\n").stripTrailing() + "\n";

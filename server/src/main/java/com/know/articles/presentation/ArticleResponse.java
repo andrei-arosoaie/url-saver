@@ -4,7 +4,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
 
-@Schema(requiredProperties = {"id", "url", "title", "content", "savedAt", "version"})
+@Schema(
+    requiredProperties = {
+      "id",
+      "url",
+      "title",
+      "content",
+      "savedAt",
+      "version",
+      "category",
+      "entityName"
+    })
 public record ArticleResponse(
     UUID id,
     String url,
@@ -14,4 +24,6 @@ public record ArticleResponse(
             description = "Sanitized article HTML; null means link-only.")
         String content,
     Instant savedAt,
-    @Schema(minimum = "0") long version) {}
+    @Schema(minimum = "0") long version,
+    String category,
+    @Schema(types = {"string", "null"}) String entityName) {}

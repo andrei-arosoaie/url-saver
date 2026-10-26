@@ -1,0 +1,6 @@
+export function readerDocument(html: string, theme?: "light" | "dark") {
+  return `<!doctype html><html data-theme="${theme ?? ""}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>
+:root{color-scheme:light;--text:#17233d;--link:#1660ec;--soft:#edf4ff;--muted:#66738d;--line:#dce3ef}html[data-theme=dark]{color-scheme:dark;--text:#e8efff;--link:#8bb6ff;--soft:#203453;--muted:#a6b5d1;--line:#34435c}@media(prefers-color-scheme:dark){html:not([data-theme=light]){color-scheme:dark;--text:#e8efff;--link:#8bb6ff;--soft:#203453;--muted:#a6b5d1;--line:#34435c}}
+body{display:flow-root;margin:0;color:var(--text);font:15px/1.95 Georgia,serif;overflow-wrap:anywhere}h1,h2,h3,h4,h5,h6{line-height:1.3;margin:1.6em 0 .6em}p{margin:0 0 1.2em}a{color:var(--link)}pre{overflow:auto;background:var(--soft);padding:16px;border-radius:6px;font:14px/1.6 monospace}code{font-size:.85em}blockquote{margin:24px 0;padding:4px 22px;border-left:3px solid var(--link);color:var(--muted)}table{display:block;overflow:auto;border-collapse:collapse}th,td{padding:8px;border:1px solid var(--line)}
+</style></head><body>${html}</body></html>`;
+}
