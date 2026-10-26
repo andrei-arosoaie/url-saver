@@ -67,5 +67,5 @@ curl -fsS "$address/api/v1/articles" | grep -q 'Image smoke article'
 [ "$(docker exec "$database" psql -U know -d know -Atc "select count(*) from articles where account_id='00000000-0000-4000-8000-000000000001' and content='<p>Saved through the real container API.</p>'")" = 1 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/v3/api-docs")" = 404 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/swagger-ui/index.html")" = 404 ]
-[ "$(docker exec "$database" psql -U know -d know -Atc 'select count(*) from flyway_schema_history where success')" = 1 ]
+[ "$(docker exec "$database" psql -U know -d know -Atc 'select count(*) from flyway_schema_history where success')" = 3 ]
 echo 'Image smoke check passed: amd64, non-root, JRE-only, required mounted YAML, custom PORT, real PostgreSQL migration, liveness, temporary-account saving and persisted article content, disabled docs.'
