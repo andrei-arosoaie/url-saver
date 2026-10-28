@@ -82,6 +82,17 @@ public abstract class BackendIntegrationSupport {
 
   @TestConfiguration
   public static class AuthenticationFixture {
+    @Bean(destroyMethod = "close")
+    ScreenshotProviderFixture screenshotProviderFixture() throws java.io.IOException {
+      return new ScreenshotProviderFixture();
+    }
+
+    @Bean
+    com.know.screenshots.application.ScreenshotStorage testScreenshotStorage(
+        ScreenshotProviderFixture fixture) {
+      return fixture.storage();
+    }
+
     @Bean
     @org.springframework.context.annotation.Primary
     TestClock entityTestClock() {

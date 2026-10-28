@@ -1,5 +1,10 @@
 import type { components } from "./generated/api";
 import type { Capture } from "./capture";
+export class ServerNonResponse extends Error {
+  constructor() {
+    super("Server did not respond. Your save is not confirmed.");
+  }
+}
 export class ApiFailure extends Error {
   constructor(
     public status: number,
@@ -23,18 +28,35 @@ export class ArticleApi {
     body?: unknown,
   ): Promise<{ status: number; data: unknown }> {
     const token = await this.token();
-    const response = await this.request(new URL(path, this.origin), {
-      method,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(60_000),
-      redirect: "error",
-      credentials: "omit",
+    let response: Response;
+    try {
+      response = await this.request(new URL(path, this.origin), {
+        method,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(body && !(body instanceof FormData)
+            ? { "Content-Type": "application/json" }
+            : {}),
+        },
+        body:
+          body instanceof FormData
+            ? body
+            : body
+              ? JSON.stringify(body)
+              : undefined,
+        signal: AbortSignal.timeout(60_000),
+        redirect: "error",
+        credentials: "omit",
+      });
+    } catch (error) {
+      if (isTransportFailure(error)) throw new ServerNonResponse();
+      throw error;
+    }
+    const data: unknown = await response.json().catch((error: unknown) => {
+      if (response.ok && isTransportFailure(error))
+        throw new ServerNonResponse();
+      return null;
     });
-    const data: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       const error = data as Partial<
         components["schemas"]["ApiErrorResponse"]
@@ -65,10 +87,65 @@ export class ArticleApi {
       ![200, 201].includes(status) ||
       !result ||
       !["CREATED", "ENRICHED", "UNCHANGED"].includes(result.outcome) ||
-      !isArticle(result.article)
+      !isArticle(result.article) ||
+      result.article.url !== capture.url
     )
       throw new Error("Unexpected server response. Save was not confirmed.");
     return result;
+  }
+  async screenshotVersion(id: string): Promise<number> {
+    const { status, data } = await this.call(
+      `/api/v1/articles/${encodeURIComponent(id)}/screenshot`,
+      "GET",
+    );
+    const value = data as { version?: number } | null;
+    if (
+      status !== 200 ||
+      !Number.isSafeInteger(value?.version) ||
+      value!.version! < 0
+    )
+      throw new Error("Invalid screenshot response.");
+    return value!.version!;
+  }
+  async uploadScreenshot(
+    id: string,
+    captureId: string,
+    version: number,
+    dataUrl?: string,
+  ): Promise<boolean> {
+    const body = new FormData();
+    body.append(
+      "metadata",
+      new Blob([JSON.stringify({ captureId, expectedVersion: version })], {
+        type: "application/json",
+      }),
+    );
+    if (dataUrl) {
+      const prefix = "data:image/png;base64,";
+      if (!dataUrl.startsWith(prefix))
+        throw new Error("Invalid screenshot capture.");
+      const binary = atob(dataUrl.slice(prefix.length));
+      body.append(
+        "file",
+        new Blob([Uint8Array.from(binary, (c) => c.charCodeAt(0))], {
+          type: "image/png",
+        }),
+        "viewport.png",
+      );
+    }
+    const { status, data } = await this.call(
+      `/api/v1/articles/${encodeURIComponent(id)}/screenshot`,
+      "PUT",
+      body,
+    );
+    const value = data as { status?: string } | null;
+    if (
+      status !== 200 ||
+      !value ||
+      !["AVAILABLE", "MISSING"].includes(value.status ?? "")
+    )
+      throw new Error("Invalid screenshot upload response.");
+    return value.status === "AVAILABLE";
   }
   async existing(id: string): Promise<Article> {
     const { status, data } = await this.call(
@@ -97,6 +174,16 @@ export class ArticleApi {
       throw new Error("Unexpected update response.");
     return data;
   }
+}
+function isTransportFailure(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "name" in error &&
+    ["TypeError", "TimeoutError", "AbortError", "NetworkError"].includes(
+      String(error.name),
+    )
+  );
 }
 function isArticle(value: unknown): value is Article {
   if (!value || typeof value !== "object") return false;

@@ -12,6 +12,7 @@
     "dev": "wxt -b firefox --mv3",
     "typecheck": "npm run generate && wxt prepare && tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

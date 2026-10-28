@@ -16,7 +16,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: extension/firefox
@@ -32,3 +32,20 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run validate
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '27'
+          cache: gradle
+      - name: Build the real backend and webapp for integration tests
+        run: |
+          npm ci --prefix ../../webapp
+          npm run build --prefix ../../webapp
+          cd ../../server
+          sh ./gradlew --no-daemon bootJar
+          docker build --platform linux/amd64 --tag know-firefox-it .
+      - name: Verify extension saves, screenshot uploads and retries through HTTP and PostgreSQL
+        working-directory: server
+        env:
+          KNOW_RUN_EXTENSION_IT: '1'
+        run: sh scripts/verify-image.sh know-firefox-it

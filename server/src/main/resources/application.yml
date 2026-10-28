@@ -9,7 +9,11 @@ spring:
       fail-on-unknown-properties: true
       accept-float-as-int: false
   config:
-    import: file:./config/secrets.yml
+    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
   threads:
     virtual:
       enabled: true
@@ -26,6 +30,14 @@ logging:
     format:
       console: ecs
 know:
+  screenshots:
+    provider: imagekit
+    format: jpeg
+    jpeg-quality: 90
+    max-upload-bytes: 20971520
+    max-stored-bytes: 5242880
+    max-decoded-pixels: 16777216
+    signed-url-ttl: 30m
   entities:
     max-title-code-points: 1000
   pagination:

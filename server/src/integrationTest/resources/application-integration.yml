@@ -16,7 +16,15 @@ spring:
       hibernate.jdbc.time_zone: UTC
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
 know:
+  screenshots:
+    provider: test
+    cleanup:
+      enabled: false
   temporary-account:
     enabled: true
   articles:

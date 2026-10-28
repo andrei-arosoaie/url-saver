@@ -21,29 +21,83 @@ export default defineContentScript({
     const mount = document.createElement("div");
     shadow.append(mount);
     document.documentElement.append(host);
+    let captureToken: string | undefined;
+    let restoreTimer: ReturnType<typeof setTimeout> | undefined;
+    const viewportControl = async (input: unknown) => {
+      if (
+        !input ||
+        typeof input !== "object" ||
+        !("type" in input) ||
+        input.type !== "know:viewport"
+      )
+        return;
+      const message = input as {
+        hidden?: boolean;
+        token?: string;
+        url?: string;
+      };
+      if (typeof message.token !== "string") return false;
+      if (message.hidden) {
+        if (
+          message.url !== location.href ||
+          document.visibilityState !== "visible"
+        )
+          return false;
+        captureToken = message.token;
+        visibility();
+        clearTimeout(restoreTimer);
+        restoreTimer = setTimeout(() => {
+          captureToken = undefined;
+          visibility();
+        }, 5000);
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+        return (
+          captureToken === message.token &&
+          message.url === location.href &&
+          document.visibilityState === "visible"
+        );
+      }
+      if (captureToken === message.token) {
+        clearTimeout(restoreTimer);
+        captureToken = undefined;
+        visibility();
+      }
+      return true;
+    };
+    browser.runtime.onMessage.addListener(viewportControl);
     const root = createRoot(mount);
     let currentUrl = location.href;
+    const send: import("../src/SaveControl").Send = (
+      action,
+      value,
+      id,
+      version,
+    ) =>
+      browser.runtime.sendMessage({
+        type: "know:article",
+        action,
+        capture: value,
+        id,
+        version,
+      });
     const render = () =>
       root.render(
         <SaveControl
           key={currentUrl}
+          pageUrl={currentUrl}
           extract={() => capture(document, location.href)}
-          send={(action, value, id, version) =>
-            browser.runtime.sendMessage({
-              type: "know:article",
-              action,
-              capture: value,
-              id,
-              version,
-            })
-          }
+          send={send}
         />,
       );
     render();
     const visibility = () => {
       host.style.setProperty(
         "display",
-        document.visibilityState === "visible" ? "block" : "none",
+        document.visibilityState === "visible" && !captureToken
+          ? "block"
+          : "none",
         "important",
       );
     };
@@ -59,6 +113,8 @@ export default defineContentScript({
     ctx.addEventListener(document, "visibilitychange", visibility);
     visibility();
     ctx.onInvalidated(() => {
+      browser.runtime.onMessage.removeListener(viewportControl);
+      clearTimeout(restoreTimer);
       root.unmount();
       host.remove();
     });

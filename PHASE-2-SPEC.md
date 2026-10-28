@@ -11,7 +11,7 @@ Review artifacts: [SQL schema](specs/phase-2/schema.sql), [OpenAPI YAML](specs/p
 1. **Functionality:** capture, save, list and read articles; preserve Phase 1 contracts.
 2. **Timeline & Entities:** the approved timeline, entity lists and completion history described here.
 3. **Extension retries:** retry server non-response every minute, up to five retries, with meaningful progress and final failure; see [Phase 3](phase-3.html).
-4. **Screenshots & R2:** viewport screenshot capture and compressed file storage; see [Phase 4](phase-4.html).
+4. **Screenshots & storage:** viewport screenshot capture and compressed file storage; see [Phase 4](phase-4.html).
 5. **Category management:** create personal categories, disable defaults and remove personal categories; see [Phase 5](phase-5.html).
 6. **Automatic Entity & Category Identification:** classify captured pages and identify entity names/types; see [Phase 6](phase-6.html).
 7. **Article Connections & Semantic Similarity:** shared-entity relationships plus asynchronous embeddings and pgvector in Supabase PostgreSQL; see [Phase 7](phase-7.html).
@@ -38,7 +38,7 @@ These eight phases are visible as separate top-navigation groups on every page. 
 
 ## Viewport screenshots
 
-Moved to [Phase 6 — Screenshots & R2 storage](phase-6.html).
+Moved to [Phase 6 — Screenshots & storage storage](phase-6.html).
 
 ## Entity lists
 

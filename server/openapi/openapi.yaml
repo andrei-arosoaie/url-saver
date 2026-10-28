@@ -399,6 +399,95 @@ paths:
       summary: Link an existing owned entity
       tags:
       - Article entities
+  /api/v1/articles/{articleId}/screenshot:
+    get:
+      operationId: getArticleScreenshot
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: AVAILABLE or MISSING; signed URLs expire after the configured
+            lifetime.
+      summary: Read an owned screenshot and temporary private download URL
+      tags:
+      - screenshot-controller
+    put:
+      description: "metadata is JSON with captureId and expectedVersion. file is a\
+        \ native PNG; omit to record an unavailable capture. Backend transforms to\
+        \ its configured JPEG/PNG, retaining native dimensions. Reuse captureId and\
+        \ identical bytes for retries. Ownership, version and capture checks prevent\
+        \ automatic overwrite by stale requests. Article saves are independent."
+      operationId: uploadArticleScreenshot
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  $ref: "#/components/schemas/ScreenshotRequest"
+              required:
+              - metadata
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: AVAILABLE or explicitly MISSING
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: Invalid metadata or PNG
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: Missing or foreign article
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: "Stale version, superseded capture or changed bytes"
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: "Upload, stored image or decoded pixels exceed configured limits"
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenshotResponse"
+          description: Retryable screenshot upload/provider failure; article remains
+            saved
+      summary: Upload native PNG separately from an already saved article
+      tags:
+      - screenshot-controller
   /api/v1/articles/{id}:
     get:
       description: "Returns sanitized HTML, or null content for a link-only save."
@@ -1730,6 +1819,59 @@ components:
       required:
       - article
       - outcome
+    ScreenshotRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        captureId:
+          type: string
+          format: uuid
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - captureId
+      - expectedVersion
+    ScreenshotResponse:
+      type: object
+      properties:
+        byteSize:
+          type:
+          - integer
+          - "null"
+          format: int64
+        contentType:
+          type:
+          - string
+          - "null"
+        expiresAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        height:
+          type:
+          - integer
+          - "null"
+          format: int32
+        status:
+          type: string
+        url:
+          type:
+          - string
+          - "null"
+        version:
+          type: integer
+          format: int64
+        width:
+          type:
+          - integer
+          - "null"
+          format: int32
+      required:
+      - status
+      - version
     SourceArticleResponse:
       type: object
       properties:
