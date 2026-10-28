@@ -4,8 +4,8 @@ export default defineConfig({
   manifest: {
     name: "Know",
     description: "Save the current article to Know.",
-    permissions: ["storage", "tabs"],
-    host_permissions: ["http://*/*", "https://*/*"],
+    permissions: ["storage", "unlimitedStorage", "tabs", "alarms"],
+    host_permissions: ["<all_urls>"],
     incognito: "not_allowed",
     browser_specific_settings: {
       gecko: {

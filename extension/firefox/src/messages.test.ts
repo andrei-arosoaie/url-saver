@@ -1,12 +1,41 @@
 import { describe, expect, it, vi } from "vitest";
 import { ArticleApi } from "./api";
 import { articleHandler } from "./messages";
+import { SaveQueue } from "./saveQueue";
 const capture = {
   url: "https://example.com/",
   title: "Example",
   content: "<p>Article</p>",
 };
 describe("extension message boundary", () => {
+  it("checks the real tab URL before reading or acknowledging stored captures", async () => {
+    const queue = {
+      status: vi.fn(),
+      acknowledge: vi.fn(),
+      start: vi.fn(),
+    } as unknown as SaveQueue;
+    const api = new ArticleApi(
+      "https://know.example",
+      async () => undefined,
+      vi.fn(),
+    );
+    const handler = articleHandler(
+      api,
+      async () => ({ active: true, url: "https://other.test/" }),
+      queue,
+    );
+    for (const action of ["status", "acknowledge", "save"]) {
+      expect(
+        await handler(
+          { type: "know:article", action, capture },
+          { tab: { id: 1 }, frameId: 0 },
+        ),
+      ).toMatchObject({ ok: false });
+    }
+    expect(queue.status).not.toHaveBeenCalled();
+    expect(queue.acknowledge).not.toHaveBeenCalled();
+    expect(queue.start).not.toHaveBeenCalled();
+  });
   function fixture(active = true, url = capture.url) {
     const request = vi.fn<typeof fetch>();
     const api = new ArticleApi(

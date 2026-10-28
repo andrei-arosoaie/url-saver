@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ArticleApi } from "./api";
+import { ArticleApi, ServerNonResponse } from "./api";
 const article = {
   id: "5f1c60e4-cb46-444c-ad37-729109cf6d01",
   url: "https://example.com/",
@@ -21,6 +21,30 @@ function fixture() {
   };
 }
 describe("article API", () => {
+  it.each(["TypeError", "TimeoutError", "AbortError", "NetworkError"])(
+    "classifies transport %s failures across browser realms for background retries",
+    async (name) => {
+      const { request, api } = fixture();
+      request.mockRejectedValue({ name });
+      await expect(api.save(capture)).rejects.toBeInstanceOf(ServerNonResponse);
+      expect(request).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("treats an interrupted successful response body as uncertain but never retries a known HTTP error", async () => {
+    const { request, api } = fixture();
+    request.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: () => Promise.reject({ name: "AbortError" }),
+    } as unknown as Response);
+    await expect(api.save(capture)).rejects.toBeInstanceOf(ServerNonResponse);
+    request.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.reject({ name: "AbortError" }),
+    } as unknown as Response);
+    await expect(api.save(capture)).rejects.toMatchObject({ status: 401 });
+  });
   it("binds native fetch to its global context rather than the API instance", async () => {
     const nativeFetch = globalThis.fetch;
     let calls = 0;
@@ -107,6 +131,16 @@ describe("article API", () => {
     );
     await expect(api.save(capture)).rejects.toThrow("Unexpected");
     request.mockResolvedValue(
+      Response.json(
+        {
+          outcome: "CREATED",
+          article: { ...article, url: "https://different.test/" },
+        },
+        { status: 201 },
+      ),
+    );
+    await expect(api.save(capture)).rejects.toThrow("Unexpected");
+    request.mockResolvedValue(
       Response.json({ outcome: "CREATED", article }, { status: 202 }),
     );
     await expect(api.save(capture)).rejects.toThrow("Unexpected");
@@ -116,7 +150,7 @@ describe("article API", () => {
     const signalFactory = vi.spyOn(AbortSignal, "timeout");
     const { request, api } = fixture();
     request.mockRejectedValue(new DOMException("Timed out", "TimeoutError"));
-    await expect(api.save(capture)).rejects.toThrow("Timed out");
+    await expect(api.save(capture)).rejects.toBeInstanceOf(ServerNonResponse);
     expect(signalFactory).toHaveBeenCalledWith(60_000);
     expect(request).toHaveBeenCalledTimes(1);
     vi.useRealTimers();

@@ -9,6 +9,7 @@ import {
 import { Brand, TimelineIcon } from "./Brand";
 import { exactCaptureTime } from "./timeline/dates";
 import { ArticleBody } from "./ArticleBody";
+import { ScreenshotPreview } from "./screenshots/ScreenshotPreview";
 import styles from "./App.module.css";
 import { TimelineList } from "./timeline/TimelineList";
 import { MetadataEditor } from "./timeline/MetadataEditor";
@@ -492,6 +493,10 @@ export function App({
                             id: entity.id,
                           })
                         }
+                      />
+                      <ScreenshotPreview
+                        key={article.id}
+                        articleId={article.id}
                       />
                       {article.content ? (
                         <ArticleBody
