@@ -26,7 +26,11 @@ export function articleHandler(
     try {
       const tab = await getTab(sender.tab.id);
       const value = message.capture;
-      if (message.action === "status" || message.action === "acknowledge") {
+      if (
+        message.action === "status" ||
+        message.action === "acknowledge" ||
+        message.action === "retryScreenshot"
+      ) {
         if (
           !queue ||
           !value ||
@@ -39,6 +43,18 @@ export function articleHandler(
         if (message.action === "acknowledge") {
           await queue.acknowledge(value.url);
           return { ok: true };
+        }
+        if (message.action === "retryScreenshot") {
+          if (!tab.active)
+            throw new Error(
+              "Return to the active article to retry its screenshot.",
+            );
+          return (
+            (await queue.retryScreenshot(value.url)) ?? {
+              ok: false,
+              idle: true,
+            }
+          );
         }
         return (await queue.status(value.url)) ?? { ok: false, idle: true };
       }

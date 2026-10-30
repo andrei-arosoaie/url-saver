@@ -17,6 +17,10 @@ ImageKit is the first storage adapter. Application interfaces, database associat
 
 Checks article ownership first. Missing articles and foreign articles both return 404. An owned article without a screenshot returns 200 with MISSING.
 
+Reuse the same signed URL and expiry for an unchanged screenshot while valid. The bounded backend URL cache is scoped to account, screenshot version and immutable provider file reference; `know.screenshots.signed-url-cache-entries` defaults to 1000. Refresh within five seconds of expiry. `?refresh=true` explicitly renews a failed image URL after ownership validation. The configured 30-minute validity is never extended by cache hits.
+
+The webapp rechecks metadata on each article opening and reuses its valid URL only for the same screenshot version. It retains at most 100 URL records in memory; browser HTTP caching retains the image bytes according to ImageKit's response headers. Screenshot replacements use a new file/version. MISSING and denied responses discard client URL entries. Metadata remains `Cache-Control: no-store` to preserve ownership and replacement checks. Stable image URLs enable ImageKit CDN cache reuse; CDN deliveries still consume bandwidth.
+
 ```json
 {
   "status": "AVAILABLE",

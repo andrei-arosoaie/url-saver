@@ -82,11 +82,28 @@ class ScreenshotFlowsIT extends BackendIntegrationSupport {
     assertThat(delivery.statusCode()).isEqualTo(200);
     assertThat(ImageIO.read(new ByteArrayInputStream(delivery.body())).getWidth()).isEqualTo(1024);
     assertThat(provider.uploads.get()).isEqualTo(1);
+    var repeated = body(read(owner));
+    assertThat(repeated.get("url").asText()).isEqualTo(result.get("url").asText());
+    assertThat(repeated.get("expiresAt").asText()).isEqualTo(result.get("expiresAt").asText());
+    assertThat(provider.signatures.get()).isEqualTo(1);
+    var foreign = UUID.randomUUID();
+    jdbc.update(
+        "insert into accounts(id,created_at) values (?,?)",
+        foreign,
+        java.sql.Timestamp.from(Instant.now()));
+    assertThat(read(foreign).statusCode()).isEqualTo(404);
+    assertThat(provider.signatures.get()).isEqualTo(1);
+    assertThat(
+            send("GET", "/api/v1/articles/" + article + "/screenshot?refresh=true", owner, null)
+                .statusCode())
+        .isEqualTo(200);
+    assertThat(provider.signatures.get()).isEqualTo(2);
     assertThat(upload(owner, capture, 0, png).statusCode()).isEqualTo(200);
     assertThat(provider.uploads.get()).isEqualTo(1);
     assertThat(upload(owner, capture, 0, png(20, 10)).statusCode()).isEqualTo(409);
     assertThat(upload(owner, UUID.randomUUID(), 0, png).statusCode()).isEqualTo(409);
     assertThat(upload(owner, UUID.randomUUID(), 1, png(30, 20)).statusCode()).isEqualTo(200);
+    assertThat(body(read(owner)).get("url").asText()).isNotEqualTo(result.get("url").asText());
     assertThat(provider.files).hasSize(2);
     service.cleanup();
     assertThat(provider.files).hasSize(1);

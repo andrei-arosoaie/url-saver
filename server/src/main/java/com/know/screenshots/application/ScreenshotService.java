@@ -18,6 +18,7 @@ public class ScreenshotService {
   private final String activeProvider;
   private final Duration lifetime;
   private final Clock clock;
+  private final ScreenshotUrlCache urls;
 
   public ScreenshotService(
       ArticleQueries articles,
@@ -27,7 +28,8 @@ public class ScreenshotService {
       List<ScreenshotStorage> providers,
       String activeProvider,
       Duration lifetime,
-      Clock clock) {
+      Clock clock,
+      int urlCacheEntries) {
     this.articles = articles;
     this.account = account;
     this.store = store;
@@ -35,6 +37,7 @@ public class ScreenshotService {
     this.activeProvider = activeProvider;
     this.lifetime = lifetime;
     this.clock = clock;
+    this.urls = new ScreenshotUrlCache(urlCacheEntries, clock);
     var registered = new HashMap<String, ScreenshotStorage>();
     for (var provider : providers)
       if (registered.put(provider.provider(), provider) != null)
@@ -43,8 +46,12 @@ public class ScreenshotService {
   }
 
   public View read(UUID article) {
+    return read(article, false);
+  }
+
+  public View read(UUID article, boolean refresh) {
     articles.detail(article);
-    return view(store.read(account.requireId(), article));
+    return view(store.read(account.requireId(), article), refresh);
   }
 
   public View upload(UUID article, UUID capture, long expectedVersion, byte[] input) {
@@ -87,10 +94,18 @@ public class ScreenshotService {
   }
 
   private View view(ScreenshotStore.State state) {
+    return view(state, false);
+  }
+
+  private View view(ScreenshotStore.State state, boolean refresh) {
     if (state.file() == null)
       return new View("MISSING", state.version(), null, null, null, null, null, null);
     try {
-      var signed = provider(state.file().provider()).sign(state.file(), lifetime);
+      var signed =
+          urls.get(
+              new ScreenshotUrlCache.Key(account.requireId(), state.version(), state.file()),
+              refresh,
+              () -> provider(state.file().provider()).sign(state.file(), lifetime));
       return new View(
           "AVAILABLE",
           state.version(),

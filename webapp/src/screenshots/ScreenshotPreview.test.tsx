@@ -68,6 +68,7 @@ it("refreshes a failed signed URL once and then displays the missing-image place
   fireEvent.error(screen.getByAltText("Saved page viewport"));
   await screen.findByText("Screenshot unavailable");
   expect(read).toHaveBeenCalledTimes(2);
+  expect(read.mock.calls[1]?.[2]).toBe(true);
   expect(screen.getByText("Article saved successfully.")).toBeTruthy();
 });
 

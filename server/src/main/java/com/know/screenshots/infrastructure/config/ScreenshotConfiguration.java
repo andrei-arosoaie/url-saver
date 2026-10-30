@@ -63,6 +63,7 @@ public class ScreenshotConfiguration {
         providers,
         properties.provider(),
         properties.signedUrlTtl(),
-        Clock.systemUTC());
+        Clock.systemUTC(),
+        properties.signedUrlCacheEntries());
   }
 }

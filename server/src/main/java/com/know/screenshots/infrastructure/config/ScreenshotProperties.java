@@ -17,6 +17,7 @@ public record ScreenshotProperties(
     @DefaultValue("5242880") @Positive long maxStoredBytes,
     @DefaultValue("16777216") @Positive long maxDecodedPixels,
     @DefaultValue("30m") Duration signedUrlTtl,
+    @DefaultValue("1000") @Positive int signedUrlCacheEntries,
     @DefaultValue @Valid ImageKit imagekit) {
   public record ImageKit(
       @DefaultValue("") String privateKey,

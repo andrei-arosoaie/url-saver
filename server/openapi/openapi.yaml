@@ -409,6 +409,12 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: refresh
+        required: false
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           content:
