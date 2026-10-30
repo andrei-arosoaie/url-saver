@@ -42,6 +42,20 @@ public class ArticleController {
   private final com.know.accounts.application.CurrentAccount currentAccount;
   private final com.know.shared.application.PageLimits limits;
 
+  @DeleteMapping("/{id}")
+  @Operation(
+      operationId = "deleteArticle",
+      summary = "Permanently delete an owned article",
+      description =
+          "Expected version required in query. Removes article, entity associations and screenshot metadata; durably queues provider file cleanup. Entities and completion history remain. Client confirms deletion first. Missing/foreign articles return 404; stale version returns 409 VERSION_CONFLICT.")
+  @ApiResponse(
+      responseCode = "204",
+      description = "Article deleted; remote screenshot cleanup queued durably.")
+  public ResponseEntity<Void> delete(@PathVariable UUID id, @RequestParam Long version) {
+    commands.delete(id, version);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping
   @Operation(
       operationId = "listArticles",

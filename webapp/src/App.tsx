@@ -16,6 +16,9 @@ import { MetadataEditor } from "./timeline/MetadataEditor";
 import { ThemePicker } from "./theme/ThemePicker";
 import { useTheme } from "./theme/useTheme";
 import { EntitiesPage } from "./entities/EntitiesPage";
+import { CategoriesPage } from "./categories/CategoriesPage";
+import { categoryApi, type CategoryApi } from "./categories/api";
+import { DeleteArticle } from "./timeline/DeleteArticle";
 import {
   useArticleLinks,
   ArticleLinkButton,
@@ -42,29 +45,35 @@ function domain(url: string) {
 export function App({
   api = libraryApi,
   entities = entityApi,
+  categoryManagement = categoryApi,
 }: {
   api?: LibraryApi;
   entities?: EntityApi;
+  categoryManagement?: CategoryApi;
 }) {
   const theme = useTheme();
   const [hash, setHash] = useState(() => location.hash);
   const isEntities = hash.startsWith("#entities");
+  const isCategories = hash === "#categories";
   const route = entityRoute(hash);
   const [categories, setCategories] = useState<Category[]>([]);
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
 
   const [catalogError, setCatalogError] = useState("");
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const [items, setItems] = useState<Summary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState("");
+  const [listRevision, setListRevision] = useState(0);
   const [selected, setSelected] = useState<string | null>(selectedFromUrl);
   const [article, setArticle] = useState<Article | null>(null);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState("");
   const [retry, setRetry] = useState(0);
   const listRequest = useRef<AbortController | null>(null);
+  const catalogRequest = useRef<AbortController | null>(null);
   const lastListCursor = useRef<string | null>(null);
   const reader = useRef<HTMLElement>(null);
   async function load(next: string | null) {
@@ -106,9 +115,10 @@ export function App({
     setCursor(null);
     void load(null);
     return () => listRequest.current?.abort();
-  }, [api, category, query]);
+  }, [api, category, query, listRevision]);
   useEffect(() => {
     const controller = new AbortController();
+    catalogRequest.current = controller;
     setCatalogError("");
     if (api.categories)
       void api
@@ -121,7 +131,13 @@ export function App({
             setCatalogError("Categories unavailable. Refresh to try again.");
         });
     return () => controller.abort();
-  }, [api]);
+  }, [api, catalogRevision]);
+  useEffect(() => {
+    if (!selected && !isEntities)
+      document.title = isCategories
+        ? "Categories · Know"
+        : "Know · Saved articles";
+  }, [hash, selected]);
   useEffect(() => {
     const changed = () => {
       setHash(location.hash);
@@ -137,7 +153,7 @@ export function App({
   useEffect(() => {
     setArticle(null);
     setReadError("");
-    if (!isEntities) document.title = "Know · Saved articles";
+    if (!isEntities && !isCategories) document.title = "Know · Saved articles";
     if (!selected) {
       setReading(false);
       document
@@ -170,6 +186,7 @@ export function App({
     return () => controller.abort();
   }, [selected, retry, api]);
   function navigate(id: string | null) {
+    if (isCategories) setListRevision((v) => v + 1);
     history.pushState(
       null,
       "",
@@ -186,6 +203,11 @@ export function App({
     const value = entityHash(next);
     history[replace ? "replaceState" : "pushState"](null, "", value);
     setHash(value);
+    setSelected(null);
+  }
+  function navigateCategories() {
+    history.pushState(null, "", "#categories");
+    setHash("#categories");
     setSelected(null);
   }
   const currentCategory = categories.find((c) => c.key === article?.category);
@@ -213,31 +235,33 @@ export function App({
         >
           <Brand />
         </a>
-        <label className={styles.search}>
-          <span className={styles.srOnly}>
-            {isEntities
-              ? `Search ${types[route.type].label.toLowerCase()}`
-              : "Search saved entries"}
-          </span>
-          <input
-            type="search"
-            value={isEntities ? route.query : query}
-            placeholder={
-              isEntities
-                ? `Search ${types[route.type].label.toLowerCase()}…`
-                : "Search saved entries…"
-            }
-            autoComplete="off"
-            onChange={(event) =>
-              isEntities
-                ? navigateEntity(
-                    { ...route, query: event.target.value, id: null },
-                    true,
-                  )
-                : setQuery(event.target.value)
-            }
-          />
-        </label>
+        {!isCategories && (
+          <label className={styles.search}>
+            <span className={styles.srOnly}>
+              {isEntities
+                ? `Search ${types[route.type].label.toLowerCase()}`
+                : "Search saved entries"}
+            </span>
+            <input
+              type="search"
+              value={isEntities ? route.query : query}
+              placeholder={
+                isEntities
+                  ? `Search ${types[route.type].label.toLowerCase()}…`
+                  : "Search saved entries…"
+              }
+              autoComplete="off"
+              onChange={(event) =>
+                isEntities
+                  ? navigateEntity(
+                      { ...route, query: event.target.value, id: null },
+                      true,
+                    )
+                  : setQuery(event.target.value)
+              }
+            />
+          </label>
+        )}
         <ThemePicker
           preference={theme.preference}
           onChange={theme.setPreference}
@@ -254,7 +278,7 @@ export function App({
         <nav className={styles.primaryNav} aria-label="Main navigation">
           <button
             className={styles.navItem}
-            aria-current={isEntities ? undefined : "page"}
+            aria-current={isEntities || isCategories ? undefined : "page"}
             onClick={() => navigate(null)}
           >
             <TimelineIcon />
@@ -272,8 +296,38 @@ export function App({
             </span>
             Entities
           </button>
+          <button
+            className={styles.navItem}
+            aria-current={isCategories ? "page" : undefined}
+            onClick={() => {
+              if (!isCategories) navigateCategories();
+            }}
+          >
+            <span className={styles.entitiesIcon} aria-hidden="true">
+              ▦
+            </span>
+            Categories
+          </button>
         </nav>
-        {isEntities ? (
+        {isCategories ? (
+          <CategoriesPage
+            api={categoryManagement}
+            onChanged={(rows) => {
+              catalogRequest.current?.abort();
+              setCategories(rows);
+              if (
+                category &&
+                !rows.some((c) => c.key === category && c.enabled)
+              )
+                setCategory("");
+            }}
+            onArticles={(key) => {
+              setCategory(key);
+              setQuery("");
+              navigate(null);
+            }}
+          />
+        ) : isEntities ? (
           <EntitiesPage
             route={route}
             api={entities}
@@ -481,9 +535,33 @@ export function App({
                         api={api}
                         onSaved={(updated) => {
                           setArticle(updated);
+                          setCatalogRevision((v) => v + 1);
                           void load(null);
                         }}
                       />
+                      {api.deleteArticle && (
+                        <div className={styles.deleteAction}>
+                          <DeleteArticle
+                            article={article}
+                            remove={api.deleteArticle}
+                            onDeleted={() => {
+                              setArticle(null);
+                              setItems((previous) =>
+                                previous.filter(
+                                  (item) => item.id !== article.id,
+                                ),
+                              );
+                              navigate(null);
+                              setCatalogRevision((v) => v + 1);
+                              void load(null);
+                            }}
+                            onReload={() => {
+                              setRetry((v) => v + 1);
+                              void load(null);
+                            }}
+                          />
+                        </div>
+                      )}
                       <ArticleLinkedEntities
                         state={articleLinks}
                         onOpen={(entity) =>

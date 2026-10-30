@@ -8,6 +8,7 @@
     "dev": "npm run generate && vite --host 127.0.0.1",
     "build": "npm run generate && tsc --noEmit && vite build",
     "test": "vitest run",
+    "test:browser": "node scripts/verify-categories-browser.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

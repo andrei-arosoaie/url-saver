@@ -6,6 +6,7 @@ import org.mapstruct.Mapping;
 
 @Mapper
 public interface CategoryMapper {
-  @Mapping(target = "isDefault", source = "default")
-  Category toRecord(CategoryEntity entity);
+  @Mapping(target = "articleCount", source = "count")
+  @Mapping(target = "isDefault", source = "entity.default")
+  Category toRecord(CategoryEntity entity, long count);
 }

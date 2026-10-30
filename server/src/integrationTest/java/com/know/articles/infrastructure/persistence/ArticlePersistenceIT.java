@@ -39,7 +39,7 @@ class ArticlePersistenceIT extends BackendIntegrationSupport {
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from flyway_schema_history where success", Integer.class))
-        .isEqualTo(4);
+        .isEqualTo(5);
     assertThat(
             jdbc.queryForObject(
                 "select encode(sha256(convert_to('abc','UTF8')),'hex')", String.class))

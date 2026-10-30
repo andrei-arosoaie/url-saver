@@ -20,6 +20,7 @@ export interface LibraryApi {
     filters?: Filters,
   ): Promise<Page>;
   read(id: string, signal: AbortSignal): Promise<Article>;
+  deleteArticle?(article: Article, signal: AbortSignal): Promise<void>;
   categories?(signal: AbortSignal): Promise<Category[]>;
   updateMetadata?(
     article: Article,
@@ -67,6 +68,37 @@ function summary(value: unknown): value is Summary {
   );
 }
 export const libraryApi: LibraryApi = {
+  async deleteArticle(article, signal) {
+    let response: Response;
+    try {
+      response = await globalThis.fetch(
+        `/api/v1/articles/${encodeURIComponent(article.id)}?version=${article.version}`,
+        {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.any([signal, AbortSignal.timeout(60_000)]),
+        },
+      );
+    } catch (error) {
+      if (signal.aborted) throw error;
+      throw new ArticleConflict(
+        "Deletion was not confirmed. Reload the article before trying again.",
+      );
+    }
+    if (response.status === 409)
+      throw new ArticleConflict(
+        "This article changed. Reload it and confirm deletion again.",
+      );
+    if (response.status === 404)
+      throw new ArticleConflict(
+        "This article is no longer available. Reload your library.",
+      );
+    if (response.status !== 204)
+      throw new ArticleConflict(
+        "Deletion was not confirmed. Reload the article before trying again.",
+      );
+  },
   async updateMetadata(article, category, entityName, signal) {
     const response = await globalThis.fetch(
       `/api/v1/articles/${encodeURIComponent(article.id)}`,

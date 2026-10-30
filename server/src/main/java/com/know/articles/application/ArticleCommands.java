@@ -12,11 +12,26 @@ public class ArticleCommands {
   private final ArticleContent contentPolicy;
   private final ArticleWriter writer;
   private final com.know.categories.application.CategoryCatalog categories;
+  private final org.springframework.context.ApplicationEventPublisher events;
+
+  @Transactional
+  public void delete(UUID id, Long version) {
+    var account = currentAccount.requireId();
+    if (version == null || version < 0)
+      throw new ArticleFailure(400, "INVALID_REQUEST", "Supply a non-negative article version.");
+    var article = writer.lockOwned(account, id);
+    if (article.version() != version)
+      throw new ArticleFailure(
+          409, "VERSION_CONFLICT", "Article changed; reload and confirm deletion again.");
+    events.publishEvent(new com.know.shared.application.ArticleDeleting(account, id));
+    writer.delete(account, id);
+  }
 
   @Transactional
   public SaveResult save(SaveArticle command) {
     var account = currentAccount.requireId();
     categories.ensureDefaults(account);
+    categories.lockEnabled(account, "OTHER");
     contentPolicy.validateUrl(command.url());
     contentPolicy.validateTitle(command.title());
     var content = command.content() == null ? null : contentPolicy.sanitize(command.content());
@@ -57,7 +72,7 @@ public class ArticleCommands {
     if (command.title() != null) contentPolicy.validateTitle(command.title());
     if (command.category() != null) {
       categories.ensureDefaults(account);
-      categories.requireEnabled(account, command.category());
+      categories.lockEnabled(account, command.category());
     }
     if (command.entityNamePresent() && command.entityName() != null)
       contentPolicy.validateTitle(command.entityName());
