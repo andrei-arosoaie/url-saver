@@ -2,6 +2,8 @@ import { ApiFailure, ServerNonResponse, type ArticleApi } from "./api";
 import type { Capture } from "./capture";
 import { maxRetries, retryDelay, RetriesExhausted } from "./retrySave";
 import type { ScreenshotQueue } from "./screenshotQueue";
+import { CaptureFailure, type CaptureIssue } from "./captureFailure";
+import { reportScreenshotFailure } from "./screenshotDiagnostics";
 
 export type SaveReply = {
   ok: boolean;
@@ -27,7 +29,11 @@ export type SaveJob = {
   phase: "waiting" | "sending" | "finished";
   nextAt: number;
   reply?: SaveReply;
-  screenshot?: { captureId: string; dataUrl?: string };
+  screenshot?: {
+    captureId: string;
+    dataUrl?: string;
+    captureIssue?: CaptureIssue;
+  };
 };
 export const queuePrefix = "know:pending-save:";
 export const queueKey = (url: string) => queuePrefix + encodeURIComponent(url);
@@ -142,17 +148,24 @@ export class SaveQueue {
         phase: "waiting",
         nextAt: this.now(),
       };
-      if (viewport)
-        job.screenshot = {
-          captureId: crypto.randomUUID(),
-          dataUrl: await viewport().catch(() => undefined),
-        };
+      if (viewport) {
+        job.screenshot = { captureId: crypto.randomUUID() };
+        try {
+          job.screenshot.dataUrl = await viewport();
+        } catch (error) {
+          reportScreenshotFailure("capture", error);
+          job.screenshot.captureIssue =
+            error instanceof CaptureFailure ? error.issue : "CAPTURE_FAILED";
+        }
+      }
       try {
         await this.storage.set(key, job);
       } catch (error) {
         // Image persistence failure must not prevent the smaller article job.
         if (!job.screenshot?.dataUrl) throw error;
         delete job.screenshot.dataUrl;
+        reportScreenshotFailure("storage", error);
+        job.screenshot.captureIssue = "LOCAL_STORAGE";
         await this.storage.set(key, job);
       }
       await this.alarms.schedule(key, this.now() + 1);
@@ -168,6 +181,13 @@ export class SaveQueue {
       : undefined;
     return { ...this.view(job), ...image };
   }
+  async retryScreenshot(url: string): Promise<SaveReply | undefined> {
+    await this.ready;
+    if ((await this.storage.get(queueKey(url)))?.reply?.ok) {
+      await this.screenshots?.retryNow(url);
+    }
+    return this.status(url);
+  }
   async screenshotAfterUpdate(
     url: string,
     articleId: string,
@@ -179,6 +199,7 @@ export class SaveQueue {
         articleId,
         job.screenshot.captureId,
         job.screenshot.dataUrl,
+        job.screenshot.captureIssue,
       );
       delete job.screenshot;
       delete job.capture;
@@ -244,6 +265,7 @@ export class SaveQueue {
               saved.article.id,
               job.screenshot.captureId,
               job.screenshot.dataUrl,
+              job.screenshot.captureIssue,
             );
           } catch {
             reply.message = "Article saved. Screenshot unavailable.";

@@ -1,6 +1,8 @@
 import { ApiFailure, ServerNonResponse } from "./api";
 import type { QueueAlarms, SaveReply } from "./saveQueue";
 import { maxRetries, retryDelay } from "./retrySave";
+import { captureIssueMessage, type CaptureIssue } from "./captureFailure";
+import { reportScreenshotFailure } from "./screenshotDiagnostics";
 
 export const screenshotPrefix = "know:pending-screenshot:";
 export const screenshotKey = (url: string) =>
@@ -9,6 +11,7 @@ export type ScreenshotJob = {
   articleId: string;
   captureId: string;
   dataUrl?: string;
+  captureIssue?: CaptureIssue;
   expectedVersion?: number;
   attempts: number;
   nextAt: number;
@@ -56,6 +59,7 @@ export class ScreenshotQueue {
     articleId: string,
     captureId: string,
     dataUrl?: string,
+    captureIssue?: CaptureIssue,
   ) {
     await this.ready;
     const key = screenshotKey(url),
@@ -65,6 +69,7 @@ export class ScreenshotQueue {
       articleId,
       captureId,
       dataUrl,
+      captureIssue,
       attempts: 0,
       nextAt: this.now(),
       phase: "waiting",
@@ -74,6 +79,8 @@ export class ScreenshotQueue {
     } catch (error) {
       if (!job.dataUrl) throw error;
       delete job.dataUrl;
+      reportScreenshotFailure("storage", error);
+      job.captureIssue = "LOCAL_STORAGE";
       await this.storage.set(key, job);
     }
     await this.alarms.schedule(key, this.now() + 1);
@@ -85,9 +92,15 @@ export class ScreenshotQueue {
     if (job.phase === "finished")
       return {
         ok: true,
+        reason: !job.available
+          ? "SCREENSHOT_" + (job.captureIssue ?? "UPLOAD_FAILED")
+          : undefined,
         message: job.available
           ? "Article and screenshot saved."
-          : "Article saved. Screenshot unavailable.",
+          : "Article saved. Screenshot unavailable." +
+            (job.captureIssue
+              ? " " + captureIssueMessage(job.captureIssue)
+              : ""),
       };
     return {
       ok: true,
@@ -109,6 +122,17 @@ export class ScreenshotQueue {
       await this.storage.remove(key);
       await this.alarms.clear(key);
     }
+  }
+  async retryNow(url: string) {
+    await this.ready;
+    const key = screenshotKey(url);
+    if (this.locks.has(key)) return;
+    const job = await this.storage.get(key);
+    if (!job || job.phase !== "waiting") return;
+    // Keep the original PNG, capture identifier, version and retry budget.
+    job.nextAt = this.now();
+    await this.storage.set(key, job);
+    await this.alarms.schedule(key, this.now() + 1);
   }
   async run(key: string): Promise<void> {
     if (!key.startsWith(screenshotPrefix)) return;
@@ -158,6 +182,7 @@ export class ScreenshotQueue {
       );
       await this.finish(key, job, available);
     } catch (error) {
+      reportScreenshotFailure("upload", error);
       if ((await this.storage.get(key))?.captureId !== job.captureId) return;
       if (
         (error instanceof ServerNonResponse ||

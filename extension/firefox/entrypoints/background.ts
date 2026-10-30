@@ -8,6 +8,8 @@ import {
   type ScreenshotJob,
 } from "../src/screenshotQueue";
 import { captureViewport } from "../src/viewportCapture";
+import { CaptureFailure } from "../src/captureFailure";
+import { requireWebsiteCaptureAccess } from "../src/captureAccess";
 export default defineBackground(() => {
   const api = new ArticleApi(
     import.meta.env.VITE_API_ORIGIN || "https://url-saver-server.onrender.com",
@@ -84,6 +86,11 @@ export default defineBackground(() => {
     const work = captureLock
       .catch(() => {})
       .then(async () => {
+        await requireWebsiteCaptureAccess((permissions) =>
+          browser.permissions.contains(permissions),
+        );
+        if (typeof browser.tabs.captureVisibleTab !== "function")
+          throw new CaptureFailure("UNAVAILABLE");
         const token = crypto.randomUUID();
         const image = await captureViewport(
           {
@@ -96,8 +103,13 @@ export default defineBackground(() => {
               return { ...tab, active: tab.active && viewed?.id === tabId };
             },
             generation: () => generation,
-            capture: (windowId, options) =>
-              browser.tabs.captureVisibleTab(windowId, options),
+            async capture(windowId, options) {
+              try {
+                return await browser.tabs.captureVisibleTab(windowId, options);
+              } catch (error) {
+                throw new CaptureFailure("CAPTURE_FAILED", error);
+              }
+            },
             async hideControl(tabId) {
               const result = await Promise.race([
                 browser.tabs.sendMessage(
@@ -107,13 +119,12 @@ export default defineBackground(() => {
                 ),
                 new Promise((_, reject) =>
                   setTimeout(
-                    () => reject(new Error("Capture preparation timed out.")),
+                    () => reject(new CaptureFailure("PREPARATION")),
                     2000,
                   ),
                 ),
               ]);
-              if (result !== true)
-                throw new Error("Capture preparation failed.");
+              if (result !== true) throw new CaptureFailure("PREPARATION");
             },
             async restoreControl(tabId) {
               await browser.tabs.sendMessage(
@@ -132,7 +143,8 @@ export default defineBackground(() => {
         const bytes =
           Math.floor((encoded.length * 3) / 4) -
           (encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0);
-        return bytes <= 20 * 1024 * 1024 ? image : undefined;
+        if (bytes > 20 * 1024 * 1024) throw new CaptureFailure("TOO_LARGE");
+        return image;
       });
     captureLock = work;
     return work;

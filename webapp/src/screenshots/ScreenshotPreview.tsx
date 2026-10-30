@@ -24,7 +24,7 @@ export function ScreenshotPreview({
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    void read(articleId, controller.signal)
+    void read(articleId, controller.signal, revision > 0)
       .then((value) => {
         if (!controller.signal.aborted) {
           setImage(value);

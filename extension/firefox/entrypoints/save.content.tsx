@@ -69,19 +69,32 @@ export default defineContentScript({
     browser.runtime.onMessage.addListener(viewportControl);
     const root = createRoot(mount);
     let currentUrl = location.href;
-    const send: import("../src/SaveControl").Send = (
+    const reported = new Set<string>();
+    const send: import("../src/SaveControl").Send = async (
       action,
       value,
       id,
       version,
-    ) =>
-      browser.runtime.sendMessage({
+    ) => {
+      const reply = await browser.runtime.sendMessage({
         type: "know:article",
         action,
         capture: value,
         id,
         version,
       });
+      if (reply?.reason?.startsWith("SCREENSHOT_")) {
+        const key = `${reply.jobId ?? currentUrl}:${reply.reason}`;
+        if (!reported.has(key)) {
+          reported.add(key);
+          console.error("Know: article saved, screenshot failed.", {
+            reason: reply.reason,
+            message: reply.message,
+          });
+        }
+      }
+      return reply;
+    };
     const render = () =>
       root.render(
         <SaveControl

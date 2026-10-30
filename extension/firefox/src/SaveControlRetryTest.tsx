@@ -12,6 +12,62 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+it("lets the user dismiss pending screenshot feedback, reopen it and retry only the screenshot", async () => {
+  vi.useFakeTimers();
+  const pageUrl = "https://example.test/pending-image";
+  const extract = vi.fn();
+  const waiting: Reply = {
+    ok: true,
+    jobId: "saved",
+    progress: {
+      target: "screenshot",
+      phase: "waiting",
+      retry: 8,
+      nextAttemptAt: Date.now() + 30000,
+    },
+  };
+  const send = vi.fn<Send>(async (action) =>
+    action === "retryScreenshot"
+      ? {
+          ok: true,
+          jobId: "saved",
+          progress: { target: "screenshot", phase: "sending", retry: 8 },
+        }
+      : waiting,
+  );
+  render(<SaveControl pageUrl={pageUrl} extract={extract} send={send} />);
+  await act(async () => {});
+  const close = screen.getByRole("button", { name: "Dismiss Know message" });
+  expect(close.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(close);
+  expect(
+    screen.queryByRole("region", { name: "Know extension feedback" }),
+  ).toBeNull();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(
+    screen.queryByRole("button", { name: "Dismiss Know message" }),
+  ).toBeNull();
+  const circle = screen.getByRole("button", { name: "Know: Save article" });
+  expect(circle.hasAttribute("disabled")).toBe(false);
+  fireEvent.click(circle);
+  fireEvent.click(screen.getByRole("button", { name: "Retry screenshot now" }));
+  await act(async () => {});
+  expect(send).toHaveBeenCalledWith("retryScreenshot", {
+    url: pageUrl,
+    title: "",
+  });
+  expect(screen.getByRole("status").textContent).toBe(
+    "Article saved. Uploading screenshot...",
+  );
+  expect(extract).not.toHaveBeenCalled();
+  expect(
+    send.mock.calls.some(
+      ([action]) => action === "save" || action === "acknowledge",
+    ),
+  ).toBe(false);
+});
 it("ignores an old status response after the user starts a new save", async () => {
   let resolveStatus!: (reply: Reply) => void;
   const send = vi.fn<Send>((action) =>

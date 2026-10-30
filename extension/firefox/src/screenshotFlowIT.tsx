@@ -91,6 +91,20 @@ it("saves through UI/background/HTTP/PostgreSQL, retries the original image afte
   await images!.run(screenshotKey(capture.url));
   expect(imageJobs[screenshotKey(capture.url)]?.phase).toBe("waiting");
   await screen.findByText(/Article saved. Screenshot upload will retry/);
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss Know message" }));
+  expect(
+    screen.queryByRole("button", { name: "Dismiss Know message" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Know: Save article" }));
+  await fetch(`${provider}/__test/fail-next`);
+  fireEvent.click(screen.getByRole("button", { name: "Retry screenshot now" }));
+  await waitFor(() =>
+    expect(imageJobs[screenshotKey(capture.url)]?.nextAt).toBeLessThanOrEqual(
+      now,
+    ),
+  );
+  await images!.run(screenshotKey(capture.url));
+  expect(imageJobs[screenshotKey(capture.url)]?.attempts).toBe(2);
   const original = imageJobs[screenshotKey(capture.url)]!;
   expect(original.dataUrl).toBe(
     viewport.mock.results[0]!.value instanceof Promise

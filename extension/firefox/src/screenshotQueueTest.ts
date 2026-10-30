@@ -6,6 +6,7 @@ import {
   type ScreenshotJob,
 } from "./screenshotQueue";
 import { SaveQueue, queueKey, type SaveJob } from "./saveQueue";
+import { CaptureFailure, captureIssueMessage } from "./captureFailure";
 
 const url = "https://example.test/native";
 const png = "data:image/png;base64,b3JpZ2luYWw=";
@@ -46,6 +47,25 @@ function fixture() {
     },
   };
 }
+
+it("manual retry runs the original image immediately without resetting its version or retry budget", async () => {
+  const f = fixture(),
+    queue = f.build();
+  f.api.uploadScreenshot.mockRejectedValueOnce(new ServerNonResponse());
+  await queue.start(url, "article", "capture", png);
+  await queue.run(screenshotKey(url));
+  expect(f.records[screenshotKey(url)]?.nextAt).toBeGreaterThan(f.clock());
+  await queue.retryNow(url);
+  await queue.run(screenshotKey(url));
+  expect(f.api.uploadScreenshot.mock.calls).toEqual([
+    ["article", "capture", 4, png],
+    ["article", "capture", 4, png],
+  ]);
+  expect(f.records[screenshotKey(url)]?.attempts).toBe(2);
+  expect((await queue.status(url))?.message).toBe(
+    "Article and screenshot saved.",
+  );
+});
 
 it("retries the original PNG after a browser restart without changing capture or version", async () => {
   const f = fixture();
@@ -130,7 +150,7 @@ it("records a missing screenshot when capture fails while still saving the full 
   await queue.start(
     { url, title: "Original", content: "<p>All article text.</p>" },
     async () => {
-      throw new Error("Capture permission denied");
+      throw new CaptureFailure("PERMISSION");
     },
   );
   await queue.run(queueKey(url));
@@ -147,7 +167,8 @@ it("records a missing screenshot when capture fails while still saving the full 
     undefined,
   );
   expect((await queue.status(url))?.message).toBe(
-    "Article saved. Screenshot unavailable.",
+    "Article saved. Screenshot unavailable. " +
+      captureIssueMessage("PERMISSION"),
   );
 });
 

@@ -1,3 +1,4 @@
+import { CaptureFailure } from "./captureFailure";
 export type ViewportFormat = "png" | "jpeg";
 export type CaptureTab = {
   id?: number;
@@ -32,9 +33,7 @@ export async function captureViewport(
     tab.url !== expectedUrl ||
     !/^https?:\/\//.test(expectedUrl)
   )
-    throw new Error(
-      "Return to the active article before capturing its viewport.",
-    );
+    throw new CaptureFailure("PAGE_CHANGED");
   const generation = browser.generation(tab.windowId);
   const assertSamePage = async () => {
     const current = await browser.tab(tabId);
@@ -45,9 +44,7 @@ export async function captureViewport(
       current.url !== expectedUrl ||
       browser.generation(tab.windowId) !== generation
     )
-      throw new Error(
-        "The active page changed. Screenshot capture was discarded.",
-      );
+      throw new CaptureFailure("PAGE_CHANGED");
   };
   try {
     await browser.hideControl(tabId);
@@ -55,9 +52,7 @@ export async function captureViewport(
     const image = await browser.capture(tab.windowId, options);
     await assertSamePage();
     if (!image.startsWith(`data:image/${options.format};base64,`))
-      throw new Error(
-        "Firefox did not return the requested screenshot format.",
-      );
+      throw new CaptureFailure("CAPTURE_FAILED");
     return image;
   } finally {
     // Navigation/closed-tab failures must not replace the actual capture result.

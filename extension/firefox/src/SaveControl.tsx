@@ -5,7 +5,13 @@ import type { Capture } from "./capture";
 import styles from "./SaveControl.module.css";
 export type Reply = SaveReply & { idle?: boolean };
 export type Send = (
-  action: "save" | "existing" | "update" | "status" | "acknowledge",
+  action:
+    | "save"
+    | "existing"
+    | "update"
+    | "status"
+    | "acknowledge"
+    | "retryScreenshot",
   capture: Capture,
   id?: string,
   version?: number,
@@ -25,6 +31,7 @@ export function SaveControl({
   const [duplicate, setDuplicate] = useState<{ id: string; version: number }>();
   const [progress, setProgress] = useState<Reply["progress"]>();
   const [clock, setClock] = useState(Date.now());
+  const [dismissed, setDismissed] = useState(false);
   const alive = useRef(true);
   const inFlight = useRef(false);
   const interaction = useRef(0);
@@ -135,6 +142,7 @@ export function SaveControl({
   async function save(value: Capture) {
     if (inFlight.current) return;
     setState("saving");
+    setDismissed(false);
     setMessage("Saving article…");
     inFlight.current = true;
     try {
@@ -151,6 +159,10 @@ export function SaveControl({
     }
   }
   async function click() {
+    if (busy || (dismissed && state !== "ready")) {
+      setDismissed(false);
+      return;
+    }
     if (
       inFlight.current ||
       busy ||
@@ -175,6 +187,7 @@ export function SaveControl({
     terminalJob.current = undefined;
     interaction.current++;
     setState("saving");
+    setDismissed(false);
     setMessage("Updating article…");
     inFlight.current = true;
     try {
@@ -202,6 +215,10 @@ export function SaveControl({
     }
   }
   function cancel() {
+    if (busy) {
+      setDismissed(true);
+      return;
+    }
     interaction.current++;
     if (pageUrl)
       void send("acknowledge", { url: pageUrl, title: "" }).catch(() => {});
@@ -209,6 +226,23 @@ export function SaveControl({
     setDuplicate(undefined);
     setState("ready");
     setMessage("");
+    setDismissed(false);
+    setProgress(undefined);
+  }
+  async function retryScreenshot() {
+    if (!pageUrl || inFlight.current) return;
+    interaction.current++;
+    inFlight.current = true;
+    terminalJob.current = undefined;
+    try {
+      await receive(await send("retryScreenshot", { url: pageUrl, title: "" }));
+    } catch {
+      fail(
+        "Article saved. Could not restart the screenshot upload. Reopen this page to check its status.",
+      );
+    } finally {
+      inFlight.current = false;
+    }
   }
   return (
     <div className={styles.root}>
@@ -216,7 +250,7 @@ export function SaveControl({
         className={`${styles.circle} ${styles[state] || ""}`}
         aria-label="Know: Save article"
         aria-busy={busy}
-        disabled={busy}
+        disabled={busy && !dismissed}
         onClick={() => void click()}
       >
         <span aria-hidden="true">
@@ -240,15 +274,11 @@ export function SaveControl({
           )}
         </span>
       </button>
-      {state !== "ready" && (
+      {state !== "ready" && !dismissed && (
         <section className={styles.panel} aria-label="Know extension feedback">
           <header>
             KNOW <small>Firefox extension</small>
-            <button
-              aria-label="Dismiss Know message"
-              disabled={busy}
-              onClick={cancel}
-            >
+            <button aria-label="Dismiss Know message" onClick={cancel}>
               ×
             </button>
           </header>
@@ -265,6 +295,12 @@ export function SaveControl({
                     : "Saving article…"
               : message}
           </p>
+          {progress?.target === "screenshot" &&
+            progress.phase === "waiting" && (
+              <button onClick={() => void retryScreenshot()}>
+                Retry screenshot now
+              </button>
+            )}
           {state === "duplicate" && (
             <div>
               <button onClick={() => void update()}>Update existing</button>

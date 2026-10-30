@@ -27,10 +27,11 @@ public class ScreenshotController {
       responseCode = "200",
       description = "AVAILABLE or MISSING; signed URLs expire after the configured lifetime.",
       content = @Content(schema = @Schema(implementation = ScreenshotResponse.class)))
-  public ResponseEntity<ScreenshotResponse> read(@PathVariable UUID articleId) {
+  public ResponseEntity<ScreenshotResponse> read(
+      @PathVariable UUID articleId, @RequestParam(defaultValue = "false") boolean refresh) {
     return ResponseEntity.ok()
         .cacheControl(CacheControl.noStore())
-        .body(mapper.response(service.read(articleId)));
+        .body(mapper.response(service.read(articleId, refresh)));
   }
 
   @PutMapping(consumes = "multipart/form-data")

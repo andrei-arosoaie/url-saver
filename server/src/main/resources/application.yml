@@ -38,6 +38,7 @@ know:
     max-stored-bytes: 5242880
     max-decoded-pixels: 16777216
     signed-url-ttl: 30m
+    signed-url-cache-entries: 1000
   entities:
     max-title-code-points: 1000
   pagination:

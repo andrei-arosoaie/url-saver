@@ -20,6 +20,7 @@ public class ScreenshotProviderFixture implements AutoCloseable {
 
   public final Map<String, File> files = new ConcurrentHashMap<>();
   public final AtomicInteger uploads = new AtomicInteger();
+  public final AtomicInteger signatures = new AtomicInteger();
   public volatile boolean failUpload;
   public volatile boolean commitThenFail;
   private final HttpServer server;
@@ -153,12 +154,19 @@ public class ScreenshotProviderFixture implements AutoCloseable {
       public String provider() {
         return "test";
       }
+
+      @Override
+      public Download sign(StoredFile file, Duration lifetime) {
+        signatures.incrementAndGet();
+        return super.sign(file, lifetime);
+      }
     };
   }
 
   public void reset() {
     files.clear();
     uploads.set(0);
+    signatures.set(0);
     failUpload = false;
     commitThenFail = false;
   }
