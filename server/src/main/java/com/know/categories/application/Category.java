@@ -9,4 +9,5 @@ public record Category(
     boolean isDefault,
     boolean enabled,
     Instant createdAt,
-    long version) {}
+    long version,
+    long articleCount) {}

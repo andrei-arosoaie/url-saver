@@ -10,6 +10,27 @@ public interface CategoryRepository extends JpaRepository<CategoryEntity, Catego
 
   Optional<CategoryEntity> findByAccountIdAndKey(UUID account, String key);
 
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("select c from CategoryEntity c where c.accountId=:account and c.key=:key")
+  Optional<CategoryEntity> lock(UUID account, String key);
+
+  @Query(
+      value =
+          "select category as key, count(*) as count from articles where account_id=:account group by category",
+      nativeQuery = true)
+  List<ArticleCount> counts(UUID account);
+
+  @Query(
+      value = "select count(*) from articles where account_id=:account and category=:key",
+      nativeQuery = true)
+  long countArticles(UUID account, String key);
+
+  interface ArticleCount {
+    String getKey();
+
+    long getCount();
+  }
+
   @Modifying
   @Query(
       value =

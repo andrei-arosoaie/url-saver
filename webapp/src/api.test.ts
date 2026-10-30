@@ -11,6 +11,35 @@ const item = {
   entityName: null,
 };
 afterEach(() => vi.unstubAllGlobals());
+it("permanently deletes using the displayed article version and requires exactly 204", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response(null, { status: 202 }));
+  vi.stubGlobal("fetch", fetch);
+  const article = { ...item, content: null, version: 3 };
+  await libraryApi.deleteArticle!(article, new AbortController().signal);
+  expect(fetch.mock.calls[0]![0]).toBe(`/api/v1/articles/${item.id}?version=3`);
+  expect(fetch.mock.calls[0]![1].method).toBe("DELETE");
+  await expect(
+    libraryApi.deleteArticle!(article, new AbortController().signal),
+  ).rejects.toThrow("not confirmed");
+});
+it("does not retry deletion conflicts or lost responses", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(null, { status: 409 }))
+    .mockRejectedValueOnce(new TypeError("Disconnected"));
+  vi.stubGlobal("fetch", fetch);
+  const article = { ...item, content: null };
+  await expect(
+    libraryApi.deleteArticle!(article, new AbortController().signal),
+  ).rejects.toThrow("confirm deletion again");
+  await expect(
+    libraryApi.deleteArticle!(article, new AbortController().signal),
+  ).rejects.toThrow("not confirmed");
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
 describe("library HTTP client", () => {
   it("sends literal filters safely and preserves the article version in metadata updates", async () => {
     const fetch = vi

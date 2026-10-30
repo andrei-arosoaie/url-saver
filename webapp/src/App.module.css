@@ -239,6 +239,9 @@
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
+.deleteAction {
+  margin: 0 0 20px;
+}
 .facts dt {
   color: var(--muted);
 }

@@ -12,6 +12,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 interface ArticleJpaRepository extends JpaRepository<ArticleEntity, UUID> {
+  @Modifying
+  @Query(
+      value = "delete from article_entities where account_id=:accountId and article_id=:id",
+      nativeQuery = true)
+  void unlinkAll(UUID accountId, UUID id);
+
   boolean existsByIdAndAccountId(UUID id, UUID accountId);
 
   @Query(

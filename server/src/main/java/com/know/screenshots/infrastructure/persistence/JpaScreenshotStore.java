@@ -15,6 +15,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class JpaScreenshotStore implements ScreenshotStore {
   private final ScreenshotRepository screenshots;
   private final CleanupRepository cleanup;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+  @org.springframework.context.event.EventListener
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+  public void articleDeleting(com.know.shared.application.ArticleDeleting event) {
+    screenshots
+        .lock(event.accountId(), event.articleId())
+        .ifPresent(
+            row -> {
+              if (row.getFileId() != null)
+                enqueue(
+                    UUID.randomUUID(),
+                    new StoredFile(row.getProvider(), row.getFileId(), row.getFilePath()),
+                    Instant.now(),
+                    Instant.now());
+              screenshots.delete(row);
+              screenshots.flush();
+            });
+    // An upload's separate pre-upload journal survives article deletion and cleans late files.
+  }
 
   private State state(ScreenshotEntity entity) {
     if (entity == null) return new State(0, null, null, null, null, null, null);
@@ -46,6 +66,12 @@ public class JpaScreenshotStore implements ScreenshotStore {
       String hash,
       String provider,
       Instant now) {
+    if (jdbc.query(
+            "select id from articles where account_id=? and id=? for update",
+            (r, n) -> r.getObject(1, UUID.class),
+            account,
+            article)
+        .isEmpty()) throw new RequestFailure(404, "RESOURCE_NOT_FOUND", "Article not found.");
     screenshots.ensure(account, article);
     var row = screenshots.lock(account, article).orElseThrow();
     boolean same = captureId.equals(row.getCaptureId());
@@ -102,8 +128,9 @@ public class JpaScreenshotStore implements ScreenshotStore {
   @Transactional
   public boolean complete(
       UUID account, UUID article, UUID capture, UUID lease, StoredFile file, ImageFile image) {
-    var row = screenshots.lock(account, article).orElseThrow();
-    if (!capture.equals(row.getCaptureId()) || !lease.equals(row.getLeaseId())) return false;
+    var row = screenshots.lock(account, article).orElse(null);
+    if (row == null || !capture.equals(row.getCaptureId()) || !lease.equals(row.getLeaseId()))
+      return false;
     row.setLeaseId(null);
     row.setLeaseUntil(null);
     if (file != null) {
@@ -122,8 +149,8 @@ public class JpaScreenshotStore implements ScreenshotStore {
 
   @Transactional
   public void failed(UUID account, UUID article, UUID lease) {
-    var row = screenshots.lock(account, article).orElseThrow();
-    if (lease.equals(row.getLeaseId())) {
+    var row = screenshots.lock(account, article).orElse(null);
+    if (row != null && lease.equals(row.getLeaseId())) {
       row.setLeaseId(null);
       row.setLeaseUntil(null);
     }

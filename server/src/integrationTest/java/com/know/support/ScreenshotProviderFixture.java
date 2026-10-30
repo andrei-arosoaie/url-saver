@@ -23,6 +23,9 @@ public class ScreenshotProviderFixture implements AutoCloseable {
   public final AtomicInteger signatures = new AtomicInteger();
   public volatile boolean failUpload;
   public volatile boolean commitThenFail;
+  public volatile boolean failDelete;
+  public volatile java.util.concurrent.CountDownLatch uploadStored;
+  public volatile java.util.concurrent.CountDownLatch continueUpload;
   private final HttpServer server;
   private final JsonMapper json = JsonMapper.builder().build();
   private final String origin;
@@ -70,6 +73,13 @@ public class ScreenshotProviderFixture implements AutoCloseable {
                 return;
               }
               files.put(id, file);
+              var stored = uploadStored;
+              var release = continueUpload;
+              if (stored != null && release != null) {
+                stored.countDown();
+                if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                  throw new IllegalStateException("Test did not release upload.");
+              }
               if (commitThenFail) {
                 commitThenFail = false;
                 respond(exchange, 503, "{\"message\":\"response lost after upload\"}");
@@ -83,6 +93,10 @@ public class ScreenshotProviderFixture implements AutoCloseable {
               return;
             }
             if (exchange.getRequestMethod().equals("DELETE") && path.startsWith("/v1/files/")) {
+              if (failDelete) {
+                respond(exchange, 503, "{\"message\":\"test delete unavailable\"}");
+                return;
+              }
               files.remove(path.substring("/v1/files/".length()));
               exchange.sendResponseHeaders(204, -1);
               exchange.close();
@@ -169,6 +183,9 @@ public class ScreenshotProviderFixture implements AutoCloseable {
     signatures.set(0);
     failUpload = false;
     commitThenFail = false;
+    failDelete = false;
+    uploadStored = null;
+    continueUpload = null;
   }
 
   public void close() {

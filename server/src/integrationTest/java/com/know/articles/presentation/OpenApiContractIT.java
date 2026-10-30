@@ -28,7 +28,7 @@ class OpenApiContractIT extends BackendIntegrationSupport {
     var document = json.readTree(response.body());
     assertThat(document.get("servers").get(0).get("url").asText()).isEqualTo("/");
     var paths = document.get("paths");
-    assertThat(paths.size()).isEqualTo(12);
+    assertThat(paths.size()).isEqualTo(13);
     assertThat(paths.has("/api/v1/screenshots/settings")).isFalse();
     assertThat(paths.get("/api/v1/articles/{articleId}/screenshot").has("get")).isTrue();
     assertThat(paths.get("/api/v1/articles/{articleId}/screenshot").has("put")).isTrue();
@@ -59,6 +59,9 @@ class OpenApiContractIT extends BackendIntegrationSupport {
     assertThat(paths.get("/api/v1/entities/{id}/completions/{eventId}").has("delete")).isTrue();
     assertThat(paths.get("/api/v1/articles/{articleId}/entities/{entityId}").has("put")).isTrue();
     assertThat(paths.get("/api/v1/categories").has("get")).isTrue();
+    assertThat(paths.get("/api/v1/categories").has("post")).isTrue();
+    assertThat(paths.get("/api/v1/categories/{key}").has("patch")).isTrue();
+    assertThat(paths.get("/api/v1/categories/{key}").has("delete")).isTrue();
     var collection = paths.get("/api/v1/articles");
     var detail = paths.get("/api/v1/articles/{id}");
     assertThat(collection.has("get")).isTrue();
@@ -71,6 +74,7 @@ class OpenApiContractIT extends BackendIntegrationSupport {
         .isTrue();
     assertThat(detail.has("get")).isTrue();
     assertThat(detail.has("patch")).isTrue();
+    assertThat(detail.has("delete")).isTrue();
     assertThat(collection.get("post").get("responses").has("201")).isTrue();
     assertThat(collection.get("post").get("responses").has("409")).isTrue();
     assertThat(detail.get("patch").get("responses").has("409")).isTrue();

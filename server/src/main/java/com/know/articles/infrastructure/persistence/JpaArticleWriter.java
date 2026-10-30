@@ -13,6 +13,13 @@ public class JpaArticleWriter implements ArticleWriter {
   private final ArticlePersistenceMapper mapper;
   private final UrlHasher hasher;
 
+  public void delete(UUID accountId, UUID id) {
+    var entity = owned(accountId, id);
+    repository.unlinkAll(accountId, id);
+    repository.delete(entity);
+    repository.flush();
+  }
+
   public boolean insertIfAbsent(UUID accountId, SaveArticle command) {
     return repository.insertIfAbsent(
             UUID.randomUUID(),

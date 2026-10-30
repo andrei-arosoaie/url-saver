@@ -30,6 +30,8 @@ logging:
     format:
       console: ecs
 know:
+  categories:
+    max-name-code-points: 100
   screenshots:
     provider: imagekit
     format: jpeg

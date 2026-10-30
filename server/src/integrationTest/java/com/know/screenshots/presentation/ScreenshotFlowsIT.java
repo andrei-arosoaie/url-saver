@@ -159,6 +159,59 @@ class ScreenshotFlowsIT extends BackendIntegrationSupport {
   }
 
   @Test
+  void permanentArticleDeletionRemovesMetadataAndDurablyRetriesRemoteCleanup() throws Exception {
+    assertThat(upload(owner, UUID.randomUUID(), 0, png(30, 20)).statusCode()).isEqualTo(200);
+    assertThat(provider.files).hasSize(1);
+    var deleted = send("DELETE", "/api/v1/articles/" + article + "?version=0", owner, null);
+    assertThat(deleted.statusCode()).as(deleted.body()).isEqualTo(204);
+    assertThat(read(owner).statusCode()).isEqualTo(404);
+    assertThat(jdbc.queryForObject("select count(*) from article_screenshots", Integer.class))
+        .isZero();
+    assertThat(jdbc.queryForObject("select count(*) from screenshot_cleanup", Integer.class))
+        .isEqualTo(1);
+    provider.failDelete = true;
+    service.cleanup();
+    assertThat(provider.files).hasSize(1);
+    assertThat(jdbc.queryForObject("select attempts from screenshot_cleanup", Integer.class))
+        .isEqualTo(1);
+    provider.failDelete = false;
+    jdbc.execute("update screenshot_cleanup set next_attempt_at=now()-interval '1 minute'");
+    service.cleanup();
+    assertThat(provider.files).isEmpty();
+    assertThat(jdbc.queryForObject("select count(*) from screenshot_cleanup", Integer.class))
+        .isZero();
+    assertThat(send("GET", "/api/v1/articles/" + article, owner, null).statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  void deletionDuringUploadCannotRecreateArticleAndLateFileIsCleaned() throws Exception {
+    provider.uploadStored = new java.util.concurrent.CountDownLatch(1);
+    provider.continueUpload = new java.util.concurrent.CountDownLatch(1);
+    try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+      var uploading = executor.submit(() -> upload(owner, UUID.randomUUID(), 0, png(30, 20)));
+      try {
+        assertThat(provider.uploadStored.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        var deleted = send("DELETE", "/api/v1/articles/" + article + "?version=0", owner, null);
+        assertThat(deleted.statusCode()).as(deleted.body()).isEqualTo(204);
+      } finally {
+        provider.continueUpload.countDown();
+      }
+      assertThat(uploading.get(5, java.util.concurrent.TimeUnit.SECONDS).statusCode())
+          .isEqualTo(409);
+    }
+    assertThat(provider.files).hasSize(1);
+    assertThat(read(owner).statusCode()).isEqualTo(404);
+    assertThat(jdbc.queryForObject("select count(*) from article_screenshots", Integer.class))
+        .isZero();
+    jdbc.execute(
+        "update screenshot_cleanup set next_attempt_at=now()-interval '1 minute',retain_until=now()-interval '1 minute'");
+    service.cleanup();
+    assertThat(provider.files).isEmpty();
+    assertThat(jdbc.queryForObject("select count(*) from screenshot_cleanup", Integer.class))
+        .isZero();
+  }
+
+  @Test
   void invalidImageIsRejectedWithMissingPlaceholderAndTheArticleStillReadable() throws Exception {
     var response = upload(owner, UUID.randomUUID(), 0, new byte[] {1, 2, 3});
     assertThat(response.statusCode()).isEqualTo(400);
