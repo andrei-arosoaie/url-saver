@@ -21,6 +21,17 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
 know:
+  identification:
+    enabled: true
+    scheduling-enabled: false
+    request-timeout: 2s
+    providers:
+      openrouter:
+        api-key: fixture-key
+        model: openrouter/free
+      groq:
+        api-key: fixture-key
+        model: openai/gpt-oss-120b
   screenshots:
     provider: test
     cleanup:

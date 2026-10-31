@@ -19,6 +19,7 @@ import { EntitiesPage } from "./entities/EntitiesPage";
 import { CategoriesPage } from "./categories/CategoriesPage";
 import { categoryApi, type CategoryApi } from "./categories/api";
 import { DeleteArticle } from "./timeline/DeleteArticle";
+import { IdentificationPanel } from "./identification/IdentificationPanel";
 import {
   useArticleLinks,
   ArticleLinkButton,
@@ -528,8 +529,36 @@ export function App({
                           {article.content ? "Saved content" : "Link only"}
                         </dd>
                       </dl>
+                      {api.identification && (
+                        <IdentificationPanel
+                          key={`identification-${article.id}`}
+                          article={article}
+                          api={api.identification}
+                          onFinished={async (signal) => {
+                            const updated = await api.read(article.id, signal);
+                            if (signal.aborted) return;
+                            setArticle((previous) =>
+                              previous?.id === updated.id ? updated : previous,
+                            );
+                            setItems((previous) =>
+                              previous.map((item) =>
+                                item.id === updated.id
+                                  ? {
+                                      ...item,
+                                      category: updated.category,
+                                      entityName: updated.entityName,
+                                      version: updated.version,
+                                    }
+                                  : item,
+                              ),
+                            );
+                            setCatalogRevision((v) => v + 1);
+                            if (category || query) void load(null);
+                          }}
+                        />
+                      )}
                       <MetadataEditor
-                        key={article.id}
+                        key={`metadata-${article.id}`}
                         article={article}
                         categories={categories}
                         api={api}
@@ -573,7 +602,7 @@ export function App({
                         }
                       />
                       <ScreenshotPreview
-                        key={article.id}
+                        key={`screenshot-${article.id}`}
                         articleId={article.id}
                       />
                       {article.content ? (

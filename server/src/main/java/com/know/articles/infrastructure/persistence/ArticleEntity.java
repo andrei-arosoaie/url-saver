@@ -35,6 +35,28 @@ public class ArticleEntity {
   @Column(name = "identified_entity_name")
   private String entityName;
 
+  @Column(name = "category_source", nullable = false)
+  private String categorySource = "DEFAULT";
+
+  @Column(name = "name_source", nullable = false)
+  private String nameSource = "DEFAULT";
+
+  public void markManual(boolean categoryPresent, boolean namePresent) {
+    if (categoryPresent) categorySource = "USER";
+    if (namePresent) nameSource = "USER";
+  }
+
+  public void identify(String category, String name) {
+    if (!categorySource.equals("USER") && category != null) {
+      this.category = category;
+      categorySource = "AI";
+    }
+    if (!nameSource.equals("USER") && name != null) {
+      entityName = name;
+      nameSource = "AI";
+    }
+  }
+
   @Column(name = "saved_at", nullable = false)
   private Instant savedAt;
 

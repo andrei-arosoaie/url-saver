@@ -15,8 +15,10 @@ export function MetadataEditor({
   onSaved: (article: Article) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState(article.category ?? "OTHER");
+  const [category, setCategory] = useState("");
   const [name, setName] = useState(article.entityName ?? "");
+  const [nameChanged, setNameChanged] = useState(false);
+  const [snapshot, setSnapshot] = useState(article);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
@@ -31,9 +33,9 @@ export function MetadataEditor({
     setError("");
     try {
       const updated = await api.updateMetadata!(
-        article,
-        category,
-        name === "" ? null : name,
+        snapshot,
+        category || undefined,
+        nameChanged ? (name === "" ? null : name) : undefined,
         controller.signal,
       );
       if (!controller.signal.aborted) {
@@ -56,8 +58,11 @@ export function MetadataEditor({
       <button
         type="button"
         onClick={() => {
-          setCategory(article.category ?? "OTHER");
+          setCategory("");
           setName(article.entityName ?? "");
+          setNameChanged(false);
+          if (snapshot.version !== article.version) setConflict(false);
+          setSnapshot(article);
           setError("");
           setOpen(!open);
         }}
@@ -71,10 +76,19 @@ export function MetadataEditor({
           <label>
             Category
             <select
+              aria-label="Category"
               value={category}
               disabled={busy}
               onChange={(event) => setCategory(event.target.value)}
             >
+              <option value="">
+                Keep current category (
+                {categories.find((c) => c.key === article.category)
+                  ?.displayName ??
+                  article.category ??
+                  "Other"}
+                )
+              </option>
               {categories
                 .filter((c) => c.enabled || c.key === category)
                 .map((c) => (
@@ -89,13 +103,32 @@ export function MetadataEditor({
             <input
               value={name}
               disabled={busy}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setNameChanged(true);
+              }}
             />
           </label>
-          <small>Changing this name does not change entity links.</small>
+          {name === "" && (
+            <label className={styles.emptyName}>
+              <input
+                type="checkbox"
+                checked={nameChanged}
+                disabled={busy}
+                onChange={(event) => setNameChanged(event.target.checked)}
+              />
+              Keep name empty; do not let AI fill it
+            </label>
+          )}
+          <small>
+            Only chosen fields become your choices. Entity links stay unchanged.
+          </small>
           {error && <p role="alert">{error}</p>}
           <div>
-            <button disabled={busy || conflict} type="submit">
+            <button
+              disabled={busy || conflict || (!category && !nameChanged)}
+              type="submit"
+            >
               {busy ? "Saving…" : "Save details"}
             </button>
             <button

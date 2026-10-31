@@ -1,4 +1,8 @@
 import type { components } from "./generated/api";
+import {
+  identificationApi,
+  type IdentificationApi,
+} from "./identification/api";
 export type Article = components["schemas"]["ArticleResponse"];
 export type Summary = components["schemas"]["ArticleSummaryResponse"];
 export type Page = components["schemas"]["ArticlePageResponse"];
@@ -14,6 +18,7 @@ export interface Filters {
   query?: string;
 }
 export interface LibraryApi {
+  identification?: IdentificationApi;
   list(
     cursor: string | null,
     signal: AbortSignal,
@@ -24,8 +29,8 @@ export interface LibraryApi {
   categories?(signal: AbortSignal): Promise<Category[]>;
   updateMetadata?(
     article: Article,
-    category: string,
-    entityName: string | null,
+    category: string | undefined,
+    entityName: string | null | undefined,
     signal: AbortSignal,
   ): Promise<Article>;
 }
@@ -68,6 +73,7 @@ function summary(value: unknown): value is Summary {
   );
 }
 export const libraryApi: LibraryApi = {
+  identification: identificationApi,
   async deleteArticle(article, signal) {
     let response: Response;
     try {
