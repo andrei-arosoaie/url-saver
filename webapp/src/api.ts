@@ -1,4 +1,5 @@
 import type { components } from "./generated/api";
+import { connectionsApi, type ConnectionsApi } from "./connections/api";
 import {
   identificationApi,
   type IdentificationApi,
@@ -18,6 +19,7 @@ export interface Filters {
   query?: string;
 }
 export interface LibraryApi {
+  connections?: ConnectionsApi;
   identification?: IdentificationApi;
   list(
     cursor: string | null,
@@ -73,6 +75,7 @@ function summary(value: unknown): value is Summary {
   );
 }
 export const libraryApi: LibraryApi = {
+  connections: connectionsApi,
   identification: identificationApi,
   async deleteArticle(article, signal) {
     let response: Response;

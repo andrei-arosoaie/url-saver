@@ -1,0 +1,122 @@
+.section {
+  border-top: 1px solid var(--line);
+  padding: 22px 0;
+  margin: 20px 0;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.heading h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.section button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 11px;
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 12px;
+}
+.status,
+.meta {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.error {
+  color: var(--error);
+  font-size: 13px;
+}
+.notice {
+  color: var(--accent);
+  font-size: 13px;
+}
+.list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 16px;
+  background: var(--soft);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.title {
+  font:
+    600 19px/1.35 Georgia,
+    serif;
+  color: var(--ink);
+  text-decoration: none;
+}
+.title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  margin: 8px 0;
+}
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.reasons li {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 7px;
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 11px;
+}
+.section .remove {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.confirm {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 13px;
+}
+.confirm button + button {
+  margin-left: 8px;
+}
+.confirm p {
+  margin: 4px 0 10px;
+}
+.more,
+.retry {
+  margin-top: 8px;
+}
+@media (max-width: 760px) {
+  .section button {
+    min-height: 44px;
+  }
+  .card {
+    padding: 14px;
+  }
+  .heading {
+    align-items: baseline;
+  }
+}

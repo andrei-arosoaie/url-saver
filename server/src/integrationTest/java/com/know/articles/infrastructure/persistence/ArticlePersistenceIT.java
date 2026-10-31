@@ -27,7 +27,7 @@ class ArticlePersistenceIT extends BackendIntegrationSupport {
   @BeforeEach
   void fixtures() {
     jdbc.execute(
-        "TRUNCATE identification_jobs, identification_provider_health, screenshot_cleanup, article_screenshots, entity_completions, article_entities, entities, articles, categories, accounts");
+        "TRUNCATE embedding_provider_permits,embedding_provider_cooldowns,connection_shared_entities,article_connections,article_connection_exclusions,article_embeddings,article_connection_jobs,identification_jobs, identification_provider_health, screenshot_cleanup, article_screenshots, entity_completions, article_entities, entities, articles, categories, accounts");
     owner = UUID.randomUUID();
     other = UUID.randomUUID();
     account(owner);
@@ -39,7 +39,7 @@ class ArticlePersistenceIT extends BackendIntegrationSupport {
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from flyway_schema_history where success", Integer.class))
-        .isEqualTo(6);
+        .isEqualTo(7);
     assertThat(
             jdbc.queryForObject(
                 "select encode(sha256(convert_to('abc','UTF8')),'hex')", String.class))

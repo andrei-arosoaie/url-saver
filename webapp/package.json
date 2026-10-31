@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:browser": "node scripts/verify-categories-browser.mjs",
     "test:browser:identification": "node scripts/verify-identification-browser.mjs",
+    "test:browser:connections": "node scripts/verify-connections-browser.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

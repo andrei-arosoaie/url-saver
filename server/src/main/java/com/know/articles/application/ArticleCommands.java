@@ -44,6 +44,8 @@ public class ArticleCommands {
     }
     if (article.content() == null && content != null) {
       article = writer.revise(account, article.id(), article.title(), content);
+      events.publishEvent(
+          new com.know.shared.application.ArticleContentChanged(account, article.id()));
       return new SaveResult(SaveResult.Outcome.ENRICHED, article);
     }
     if (article.content() != null && content != null) {
@@ -82,14 +84,18 @@ public class ArticleCommands {
     var title = command.title() == null ? article.title() : command.title();
     var content =
         command.content() == null ? article.content() : contentPolicy.sanitize(command.content());
-    return writer.reviseManual(
-        account,
-        id,
-        title,
-        content,
-        command.category() == null ? article.category() : command.category(),
-        command.entityNamePresent() ? command.entityName() : article.entityName(),
-        command.category() != null,
-        command.entityNamePresent());
+    var updated =
+        writer.reviseManual(
+            account,
+            id,
+            title,
+            content,
+            command.category() == null ? article.category() : command.category(),
+            command.entityNamePresent() ? command.entityName() : article.entityName(),
+            command.category() != null,
+            command.entityNamePresent());
+    if (!java.util.Objects.equals(article.content(), content))
+      events.publishEvent(new com.know.shared.application.ArticleContentChanged(account, id));
+    return updated;
   }
 }
