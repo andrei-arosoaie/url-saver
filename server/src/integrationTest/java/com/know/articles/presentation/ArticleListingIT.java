@@ -27,7 +27,7 @@ class ArticleListingIT extends BackendIntegrationSupport {
   @BeforeEach
   void fixtures() {
     jdbc.execute(
-        "truncate screenshot_cleanup, article_screenshots, entity_completions, article_entities, entities, articles, categories, accounts");
+        "truncate identification_jobs, identification_provider_health, screenshot_cleanup, article_screenshots, entity_completions, article_entities, entities, articles, categories, accounts");
     owner = UUID.randomUUID();
     other = UUID.randomUUID();
     for (var account : List.of(owner, other))

@@ -9,6 +9,7 @@
     "build": "npm run generate && tsc --noEmit && vite build",
     "test": "vitest run",
     "test:browser": "node scripts/verify-categories-browser.mjs",
+    "test:browser:identification": "node scripts/verify-identification-browser.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

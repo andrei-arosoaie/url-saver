@@ -132,7 +132,7 @@ describe("responsive article library", () => {
       expect(api.updateMetadata).toHaveBeenCalledWith(
         detail,
         "AI",
-        null,
+        undefined,
         expect.any(AbortSignal),
       ),
     );

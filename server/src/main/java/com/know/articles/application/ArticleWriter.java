@@ -3,6 +3,16 @@ package com.know.articles.application;
 import java.util.UUID;
 
 public interface ArticleWriter {
+  ArticleSnapshot reviseManual(
+      UUID accountId,
+      UUID id,
+      String title,
+      String content,
+      String category,
+      String entityName,
+      boolean categoryPresent,
+      boolean namePresent);
+
   void delete(UUID accountId, UUID id);
 
   ArticleSnapshot revise(

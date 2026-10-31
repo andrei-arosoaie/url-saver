@@ -28,7 +28,9 @@ class OpenApiContractIT extends BackendIntegrationSupport {
     var document = json.readTree(response.body());
     assertThat(document.get("servers").get(0).get("url").asText()).isEqualTo("/");
     var paths = document.get("paths");
-    assertThat(paths.size()).isEqualTo(13);
+    assertThat(paths.size()).isEqualTo(14);
+    assertThat(paths.get("/api/v1/articles/{articleId}/identification").has("get")).isTrue();
+    assertThat(paths.get("/api/v1/articles/{articleId}/identification").has("post")).isTrue();
     assertThat(paths.has("/api/v1/screenshots/settings")).isFalse();
     assertThat(paths.get("/api/v1/articles/{articleId}/screenshot").has("get")).isTrue();
     assertThat(paths.get("/api/v1/articles/{articleId}/screenshot").has("put")).isTrue();

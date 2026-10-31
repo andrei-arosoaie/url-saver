@@ -57,6 +57,8 @@ public abstract class BackendIntegrationSupport {
   // JVM-scoped rather than JUnit class-scoped: a cached context must keep its database alive.
   // Testcontainers/Ryuk cleans up this disposable container when the test JVM exits.
   private static final PostgreSQLContainer POSTGRES = startDatabase();
+  protected static final IdentificationProviderFixture IDENTIFICATION =
+      new IdentificationProviderFixture();
   private static final AtomicReference<ApplicationContext> SHARED_CONTEXT = new AtomicReference<>();
 
   private static PostgreSQLContainer startDatabase() {
@@ -70,6 +72,10 @@ public abstract class BackendIntegrationSupport {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add(
+        "know.identification.providers.openrouter.base-url",
+        () -> IDENTIFICATION.url("openrouter"));
+    registry.add("know.identification.providers.groq.base-url", () -> IDENTIFICATION.url("groq"));
   }
 
   @BeforeEach

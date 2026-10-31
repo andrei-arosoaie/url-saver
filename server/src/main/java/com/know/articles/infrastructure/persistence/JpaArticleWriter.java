@@ -13,6 +13,22 @@ public class JpaArticleWriter implements ArticleWriter {
   private final ArticlePersistenceMapper mapper;
   private final UrlHasher hasher;
 
+  public ArticleSnapshot reviseManual(
+      UUID accountId,
+      UUID id,
+      String title,
+      String content,
+      String category,
+      String name,
+      boolean categoryPresent,
+      boolean namePresent) {
+    var entity = owned(accountId, id);
+    entity.revise(title, content, category, name);
+    entity.markManual(categoryPresent, namePresent);
+    repository.flush();
+    return mapper.toSnapshot(entity);
+  }
+
   public void delete(UUID accountId, UUID id) {
     var entity = owned(accountId, id);
     repository.unlinkAll(accountId, id);

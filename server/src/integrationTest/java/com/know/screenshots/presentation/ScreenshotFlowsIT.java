@@ -34,7 +34,7 @@ class ScreenshotFlowsIT extends BackendIntegrationSupport {
   @BeforeEach
   void prepare() throws Exception {
     jdbc.execute(
-        "truncate screenshot_cleanup, article_screenshots, entity_completions,article_entities,entities,articles,categories,accounts");
+        "truncate identification_jobs, identification_provider_health, screenshot_cleanup, article_screenshots, entity_completions,article_entities,entities,articles,categories,accounts");
     provider.reset();
     owner = UUID.randomUUID();
     jdbc.update(

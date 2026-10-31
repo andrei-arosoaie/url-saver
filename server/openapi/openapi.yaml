@@ -399,6 +399,112 @@ paths:
       summary: Link an existing owned entity
       tags:
       - Article entities
+  /api/v1/articles/{articleId}/identification:
+    get:
+      description: Owned articles only; missing and foreign articles both return 404.
+        Exactly one main subject when subjects exist. USER fields are never overwritten.
+        No provider credentials or raw errors exposed.
+      operationId: getArticleIdentification
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: "Read identification status, provenance and subjects"
+      tags:
+      - Identification
+    post:
+      description: Returns 202. Reuses pending/running work; a completed attempt can
+        be requested again. Preserves manual fields and entity links. No automatic
+        retry after both providers fail; providers in cooldown remain unavailable.
+        Returns 503 IDENTIFICATION_DISABLED when disabled.
+      operationId: requestArticleIdentification
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentificationResponse"
+          description: Accepted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Request background identification
+      tags:
+      - Identification
   /api/v1/articles/{articleId}/screenshot:
     get:
       operationId: getArticleScreenshot
@@ -1978,6 +2084,66 @@ components:
       - totalCompletionCount
       - type
       - version
+    IdentificationResponse:
+      type: object
+      properties:
+        categorySource:
+          type: string
+          enum:
+          - DEFAULT
+          - USER
+          - AI
+        completedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        model:
+          type:
+          - string
+          - "null"
+        nameSource:
+          type: string
+          enum:
+          - DEFAULT
+          - USER
+          - AI
+        provider:
+          type:
+          - string
+          - "null"
+        reason:
+          type:
+          - string
+          - "null"
+        requestedAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        status:
+          type: string
+          enum:
+          - NOT_REQUESTED
+          - PENDING
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+          - SKIPPED
+        subjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectResponse"
+      required:
+      - categorySource
+      - completedAt
+      - model
+      - nameSource
+      - provider
+      - reason
+      - requestedAt
+      - status
+      - subjects
     LinkedEntityResponse:
       type: object
       properties:
@@ -2142,6 +2308,16 @@ components:
       - title
       - url
       - version
+    SubjectResponse:
+      type: object
+      properties:
+        main:
+          type: boolean
+        name:
+          type: string
+      required:
+      - main
+      - name
     UpdateArticleRequest:
       type: object
       additionalProperties: false

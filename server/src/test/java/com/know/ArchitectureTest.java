@@ -53,13 +53,17 @@ class ArchitectureTest {
   }
 
   @Test
-  void applicationDoesNotExposeJpaOrSpringDataTypes() {
+  void applicationDoesNotExposePersistenceOrAiProviderTypes() {
     noClasses()
         .that()
         .resideInAPackage("..application..")
         .should()
         .dependOnClassesThat()
-        .resideInAnyPackage("jakarta.persistence..", "org.springframework.data..")
+        .resideInAnyPackage(
+            "jakarta.persistence..",
+            "org.springframework.data..",
+            "org.springframework.ai..",
+            "com.openai..")
         .check(classes);
   }
 }

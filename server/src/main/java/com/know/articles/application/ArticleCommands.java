@@ -38,7 +38,10 @@ public class ArticleCommands {
     var clean = new SaveArticle(command.url(), command.title(), content);
     boolean inserted = writer.insertIfAbsent(account, clean);
     var article = writer.lockExactUrl(account, command.url());
-    if (inserted) return new SaveResult(SaveResult.Outcome.CREATED, article);
+    if (inserted) {
+      events.publishEvent(new com.know.shared.application.ArticleCaptured(account, article.id()));
+      return new SaveResult(SaveResult.Outcome.CREATED, article);
+    }
     if (article.content() == null && content != null) {
       article = writer.revise(account, article.id(), article.title(), content);
       return new SaveResult(SaveResult.Outcome.ENRICHED, article);
@@ -79,12 +82,14 @@ public class ArticleCommands {
     var title = command.title() == null ? article.title() : command.title();
     var content =
         command.content() == null ? article.content() : contentPolicy.sanitize(command.content());
-    return writer.revise(
+    return writer.reviseManual(
         account,
         id,
         title,
         content,
         command.category() == null ? article.category() : command.category(),
-        command.entityNamePresent() ? command.entityName() : article.entityName());
+        command.entityNamePresent() ? command.entityName() : article.entityName(),
+        command.category() != null,
+        command.entityNamePresent());
   }
 }

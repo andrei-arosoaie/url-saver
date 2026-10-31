@@ -9,8 +9,13 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(27) } }
 repositories { mavenCentral() }
 configurations.configureEach {
     exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    // Springdoc supplies the current Jakarta annotations; the SDK's legacy duplicate shadows them.
+    exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
 }
 dependencies {
+    implementation platform('org.springframework.ai:spring-ai-bom:2.0.2')
+    implementation 'org.springframework.ai:spring-ai-openai'
+    implementation 'org.jsoup:jsoup:1.23.2'
     implementation enforcedPlatform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
     compileOnly platform('org.springframework.boot:spring-boot-dependencies:4.1.2')
@@ -84,6 +89,14 @@ tasks.register('integrationTest', Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     shouldRunAfter test
     outputs.file(layout.buildDirectory.file('openapi/openapi.yaml'))
+}
+
+tasks.register('identificationBrowserPreview', JavaExec) {
+    description = 'Starts a disposable PostgreSQL/AI fixture preview for browser verification; no production configuration is loaded.'
+    group = 'verification'
+    dependsOn integrationTestClasses
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    mainClass = 'com.know.support.IdentificationBrowserPreview'
 }
 
 tasks.register('exportOpenApi', Copy) {

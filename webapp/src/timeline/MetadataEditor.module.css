@@ -36,6 +36,14 @@
 .editor small {
   color: var(--muted);
 }
+.editor .emptyName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.emptyName input {
+  width: auto;
+}
 .editor [role="alert"] {
   color: var(--error);
 }
