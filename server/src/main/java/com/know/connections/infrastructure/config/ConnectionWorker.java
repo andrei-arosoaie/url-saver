@@ -3,6 +3,7 @@ package com.know.connections.infrastructure.config;
 import static com.know.connections.application.ConnectionModels.*;
 
 import com.know.connections.application.*;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.time.*;
 import java.util.*;
@@ -11,6 +12,8 @@ import java.util.concurrent.atomic.*;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.*;
@@ -44,6 +47,36 @@ public class ConnectionWorker {
     this.properties = properties;
     this.policy = properties.policy();
     this.clock = clock;
+  }
+
+  @PostConstruct
+  public void configuration() {
+    log.info(
+        "Connection processing configuration: enabled={}, schedulingEnabled={}, liveRequestsEnabled={}, provider={}, model={}, keyConfigured={}, unbilledProjectConfirmed={}",
+        policy.enabled(),
+        properties.schedulingEnabled(),
+        policy.liveRequestsEnabled(),
+        policy.provider(),
+        policy.model(),
+        !properties.embedding().gemini().apiKey().isBlank(),
+        properties.embedding().unbilledProjectConfirmed());
+    if (!policy.enabled())
+      log.warn(
+          "Article connections are disabled: set know.connections.enabled=true to enable processing.");
+    else if (!policy.liveRequestsEnabled())
+      log.warn(
+          "Semantic connections are paused: know.connections.embedding.live-requests-enabled=false. Shared-entity matching remains enabled; no Gemini requests will be sent.");
+  }
+
+  @EventListener(ApplicationReadyEvent.class)
+  public void ready() {
+    if (policy.enabled() && policy.liveRequestsEnabled()) {
+      int resumed = store.resumeConfiguredWork(profiles.current().id(), clock.instant());
+      log.info(
+          "Connection processing ready: resumed {} embedding jobs previously paused by configuration; provider quota cooldowns are preserved",
+          resumed);
+      if (properties.schedulingEnabled()) kick();
+    }
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -88,6 +121,12 @@ public class ConnectionWorker {
     if (!policy.enabled()) return false;
     Job job = store.claim(clock.instant(), policy.leaseDuration());
     if (job == null) return false;
+    log.debug(
+        "Connection job started: jobId={}, articleId={}, kind={}, revision={}",
+        job.id(),
+        job.articleId(),
+        job.kind(),
+        job.revision());
     Thread thread = Thread.currentThread();
     AtomicReference<UUID> permit = new AtomicReference<>();
     AtomicBoolean lost = new AtomicBoolean();
@@ -133,20 +172,36 @@ public class ConnectionWorker {
         if (failure.retryAfter() != null && failure.retryAfter().isAfter(until))
           until = failure.retryAfter();
         store.rateLimited(policy.quotaScope(), until, clock.instant());
+        log.warn(
+            "Embedding provider rate limited: jobId={}, articleId={}, httpStatus=429, resumeAt={}",
+            job.id(),
+            job.articleId(),
+            until);
         store.defer(
             job,
             until,
             "PROVIDER_QUOTA",
             "Provider quota exhausted; work remains queued.",
             clock.instant());
-      } else store.failed(job, failure, policy, clock.instant());
+      } else {
+        log.warn(
+            "Embedding request failed: jobId={}, articleId={}, httpStatus={}, failureNumber={}, transientFailure={}, retryAfter={}",
+            job.id(),
+            job.articleId(),
+            failure.status(),
+            job.attempts() + 1,
+            failure.transientFailure(),
+            failure.retryAfter());
+        store.failed(job, failure, policy, clock.instant());
+      }
     } catch (com.know.shared.application.RequestFailure changed) {
       store.defer(job, clock.instant().plus(policy.pollInterval()), null, null, clock.instant());
     } catch (RuntimeException failure) {
       log.error(
-          "Connection job failed: jobId={}, exceptionType={}",
+          "Connection job failed: jobId={}, exceptionType={}, sqlState={}",
           job.id(),
-          failure.getClass().getSimpleName());
+          failure.getClass().getSimpleName(),
+          sqlState(failure));
       store.failed(job, new EmbeddingFailure(503, null), policy, clock.instant());
     } finally {
       heartbeat.cancel(false);
@@ -197,7 +252,7 @@ public class ConnectionWorker {
         if (!policy.liveRequestsEnabled()) {
           store.defer(
               job,
-              clock.instant().plus(policy.providerCooldown()),
+              clock.instant().plus(Duration.ofMinutes(1)),
               "LIVE_REQUESTS_DISABLED",
               "Live embedding requests are disabled.",
               clock.instant());
@@ -234,7 +289,7 @@ public class ConnectionWorker {
     if (!policy.liveRequestsEnabled()) {
       store.defer(
           job,
-          clock.instant().plus(policy.providerCooldown()),
+          clock.instant().plus(Duration.ofMinutes(1)),
           "LIVE_REQUESTS_DISABLED",
           "Live embedding requests are disabled.",
           clock.instant());
@@ -273,4 +328,10 @@ public class ConnectionWorker {
   }
 
   private static class Deferred extends RuntimeException {}
+
+  private static String sqlState(Throwable failure) {
+    for (int depth = 0; failure != null && depth < 12; depth++, failure = failure.getCause())
+      if (failure instanceof java.sql.SQLException sql) return sql.getSQLState();
+    return "none";
+  }
 }

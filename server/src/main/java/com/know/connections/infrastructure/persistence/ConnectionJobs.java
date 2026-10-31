@@ -8,6 +8,7 @@ import java.sql.*;
 import java.time.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class ConnectionJobs {
   private final JdbcTemplate jdbc;
   private final JsonMapper json;
@@ -24,6 +26,18 @@ public class ConnectionJobs {
 
   static Timestamp at(Instant now) {
     return Timestamp.from(now);
+  }
+
+  @Transactional
+  public int resumeConfiguredWork(UUID profile, Instant now) {
+    return jdbc.update(
+        """
+        update article_connection_jobs set available_at=?,last_error_code=null,last_error_message=null,updated_at=?
+        where kind='EMBEDDING' and profile_id=? and status='PENDING' and last_error_code='LIVE_REQUESTS_DISABLED'
+        """,
+        at(now),
+        at(now),
+        profile);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -152,6 +166,9 @@ public class ConnectionJobs {
             force,
             force);
     if (changed > 0) events.publishEvent(new ConnectionWorkAvailable());
+    if (changed > 0)
+      log.debug(
+          "Connection job queued: articleId={}, kind={}, revision={}", a.id(), kind, a.revision());
   }
 
   @Transactional
@@ -246,17 +263,26 @@ public class ConnectionJobs {
 
   @Transactional
   public void defer(Job job, Instant until, String code, String message, Instant now) {
-    jdbc.update(
-        """
+    int changed =
+        jdbc.update(
+            """
         update article_connection_jobs set status='PENDING',available_at=?,lease_token=null,lease_until=null,
           last_error_code=?,last_error_message=?,updated_at=? where id=? and lease_token=? and status='RUNNING'
         """,
-        at(until),
-        code,
-        message,
-        at(now),
-        job.id(),
-        job.leaseToken());
+            at(until),
+            code,
+            message,
+            at(now),
+            job.id(),
+            job.leaseToken());
+    if (changed > 0 && code != null)
+      log.info(
+          "Connection job deferred: jobId={}, articleId={}, kind={}, reason={}, nextAttemptAt={}",
+          job.id(),
+          job.articleId(),
+          job.kind(),
+          code,
+          until);
   }
 
   @Transactional
@@ -314,6 +340,13 @@ public class ConnectionJobs {
             job.profileId());
     if (changed == 1 && job.kind() == Kind.EMBEDDING)
       put(a, Kind.CONNECTIONS, job.profileId(), now, true);
+    if (changed == 1)
+      log.info(
+          "Connection pass finished: jobId={}, articleId={}, kind={}, revision={}",
+          job.id(),
+          job.articleId(),
+          job.kind(),
+          job.revision());
   }
 
   @Transactional(readOnly = true)

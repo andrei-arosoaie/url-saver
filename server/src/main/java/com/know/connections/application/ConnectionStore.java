@@ -17,6 +17,8 @@ public interface ConnectionStore {
 
   Job claim(Instant now, Duration lease);
 
+  int resumeConfiguredWork(UUID profile, Instant now);
+
   boolean renew(Job job, UUID permit, Instant now, Duration lease);
 
   boolean current(Job job, Instant now);
