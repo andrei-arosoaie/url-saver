@@ -107,7 +107,13 @@ curl -fsS "$address/api/v1/articles" | grep -q 'Image smoke article'
 [ "$(docker exec "$database" psql -U know -d know -Atc "select count(*) from articles where account_id='00000000-0000-4000-8000-000000000001' and content='<p>Saved through the real container API.</p>'")" = 1 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/v3/api-docs")" = 404 ]
 [ "$(curl -sS -o /dev/null -w '%{http_code}' "$address/swagger-ui/index.html")" = 404 ]
-[ "$(docker exec "$database" psql -U know -d know -Atc 'select count(*) from flyway_schema_history where success')" = 5 ]
+expected_migrations=0
+for migration in src/main/resources/db/migration/V*__*.sql; do
+  [ -f "$migration" ] || continue
+  expected_migrations=$((expected_migrations + 1))
+done
+[ "$expected_migrations" -gt 0 ]
+[ "$(docker exec "$database" psql -U know -d know -Atc 'select count(*) from flyway_schema_history where success')" = "$expected_migrations" ]
 
 if [ -n "${KNOW_BROWSER_READY_FILE:-}" ]; then
   printf '%s\n%s\n' "$address" "$provider_address" >"$KNOW_BROWSER_READY_FILE"
