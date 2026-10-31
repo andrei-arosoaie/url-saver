@@ -210,6 +210,75 @@ class ConnectionFlowsIT extends BackendIntegrationSupport {
   }
 
   @Test
+  void
+      pausedConfigurationSendsNoRequestsAndEnablingItRecoversLegacyJobsWithoutResettingQuotaDelays()
+          throws Exception {
+    UUID a = save(owner, "configuration-a", "<p>Article subject.</p>");
+    UUID b = save(owner, "configuration-b", "<p>Article subject.</p>");
+    var pausedProperties =
+        new org.springframework.boot.context.properties.bind.Binder(
+                new org.springframework.boot.context.properties.source
+                    .MapConfigurationPropertySource(
+                    Map.of(
+                        "know.connections.enabled",
+                        "true",
+                        "know.connections.scheduling-enabled",
+                        "false",
+                        "know.connections.embedding.dimensions",
+                        "128",
+                        "know.connections.embedding.live-requests-enabled",
+                        "false")))
+            .bindOrCreate(
+                "know.connections",
+                com.know.connections.infrastructure.config.ConnectionProperties.class);
+    var requests = new java.util.concurrent.atomic.AtomicInteger();
+    provider.beforeCounting = requests::incrementAndGet;
+    var paused = new ConnectionWorker(store, provider, profiles, pausedProperties, entityTestClock);
+    try {
+      for (int i = 0; i < 10 && paused.runOne(); i++) {}
+    } finally {
+      paused.close();
+    }
+    assertThat(requests.get()).isZero();
+    assertThat(provider.embedded).isEmpty();
+    var state = store.progress(owner, a, profiles.current(), pausedProperties.policy(), NOW);
+    assertThat(state.state()).isEqualTo("PAUSED");
+    assertThat(state.reason()).isEqualTo("LIVE_REQUESTS_DISABLED");
+    assertThat(state.nextAttemptAt()).isNull();
+    // Reproduce the old production configuration pause and a separate quota pause.
+    jdbc.update(
+        "update article_connection_jobs set available_at=? where article_id=? and kind='EMBEDDING'",
+        java.sql.Timestamp.from(NOW.plusSeconds(86400)),
+        a);
+    jdbc.update(
+        "update article_connection_jobs set available_at=?,last_error_code='PROVIDER_QUOTA' where article_id=? and kind='EMBEDDING'",
+        java.sql.Timestamp.from(NOW.plusSeconds(86400)),
+        b);
+    worker.ready();
+    assertThat(
+            jdbc.queryForObject(
+                    "select available_at from article_connection_jobs where article_id=? and kind='EMBEDDING'",
+                    java.sql.Timestamp.class,
+                    a)
+                .toInstant())
+        .isEqualTo(NOW);
+    assertThat(
+            jdbc.queryForObject(
+                    "select available_at from article_connection_jobs where article_id=? and kind='EMBEDDING'",
+                    java.sql.Timestamp.class,
+                    b)
+                .toInstant())
+        .isEqualTo(NOW.plusSeconds(86400));
+    drain();
+    assertThat(connections(a, owner).path("processing").path("state").asText())
+        .isEqualTo("COMPLETE");
+    entityTestClock.set(NOW.plusSeconds(86401));
+    drain();
+    assertThat(connections(a, owner).path("items").size()).isEqualTo(1);
+    assertThat(connections(b, owner).path("items").size()).isEqualTo(1);
+  }
+
+  @Test
   void revisionChangedBetweenCountingAndEmbeddingReleasesClaimWithoutWaitingForLeaseExpiry()
       throws Exception {
     UUID id = save(owner, "changed-after-counting", "<p>Original text.</p>");

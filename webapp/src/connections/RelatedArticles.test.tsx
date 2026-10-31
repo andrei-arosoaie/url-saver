@@ -33,6 +33,25 @@ const flush = () =>
   act(async () => {
     await Promise.resolve();
   });
+
+it("explains a configuration pause without claiming that the provider quota was reached", async () => {
+  const api = fixture();
+  api.list.mockResolvedValue({
+    ...complete,
+    processing: {
+      ...complete.processing,
+      state: "PAUSED",
+      reason: "LIVE_REQUESTS_DISABLED",
+      nextAttemptAt: null,
+    },
+  });
+  render(<RelatedArticles article={article} api={api} onOpen={vi.fn()} />);
+  await screen.findByText(
+    "Semantic matching is disabled on the server. Shared-entity results remain available.",
+  );
+  expect(screen.queryByText(/Provider quota reached/)).toBeNull();
+  expect(screen.queryByText(/Next attempt:/)).toBeNull();
+});
 afterEach(() => {
   cleanup();
   vi.useRealTimers();

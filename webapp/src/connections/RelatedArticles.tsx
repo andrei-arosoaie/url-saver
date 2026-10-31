@@ -19,7 +19,9 @@ function statusText(state: Processing, count: number) {
     case "PROCESSING":
       return "Finding related articles…";
     case "PAUSED":
-      return "Provider quota reached. Processing will resume automatically.";
+      return state.reason === "LIVE_REQUESTS_DISABLED"
+        ? "Semantic matching is disabled on the server. Shared-entity results remain available."
+        : "Provider quota reached. Processing will resume automatically.";
     case "RETRY_PENDING":
       return state.reason === "LIVE_REQUESTS_DISABLED"
         ? "Semantic matching is paused. Shared-entity results remain available."

@@ -13,6 +13,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class JdbcConnectionStore implements ConnectionStore {
+  public int resumeConfiguredWork(UUID profile, Instant now) {
+    return jobs.resumeConfiguredWork(profile, now);
+  }
+
   private final ConnectionJobs jobs;
   private final ConnectionPairs pairs;
   private final ConnectionProviderGate gate;
@@ -133,6 +137,9 @@ public class JdbcConnectionStore implements ConnectionStore {
             .min(Comparator.comparing(State::available))
             .orElse(null);
     if (pending != null) {
+      if (!p.liveRequestsEnabled()
+          && states.stream().anyMatch(s -> "LIVE_REQUESTS_DISABLED".equals(s.reason())))
+        return new Progress("PAUSED", "LIVE_REQUESTS_DISABLED", null, poll);
       var blocked = gate.blockedUntil(p.quotaScope(), now);
       if (blocked != null) return new Progress("PAUSED", "PROVIDER_QUOTA", blocked, poll);
       return new Progress(
