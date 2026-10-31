@@ -24,7 +24,8 @@ class EntityServiceTest {
           mock(ArticleReader.class),
           limits,
           () -> 1000,
-          Clock.fixed(instant, ZoneOffset.UTC));
+          Clock.fixed(instant, ZoneOffset.UTC),
+          mock(org.springframework.context.ApplicationEventPublisher.class));
 
   @Test
   void completionTransitionUsesInjectedClockAndKeepsTheExactUnmodifiedTitle() {

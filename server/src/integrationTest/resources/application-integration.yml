@@ -1,4 +1,7 @@
 spring:
+  datasource:
+    hikari:
+      connection-init-sql: SET search_path TO public, extensions
   application:
     name: know-integration-test
   jackson:
@@ -21,6 +24,17 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
 know:
+  connections:
+    enabled: true
+    scheduling-enabled: false
+    embedding:
+      dimensions: 128
+      live-requests-enabled: true
+      unbilled-project-confirmed: true
+      requests-per-minute: 10000
+      embeddings-per-day: 10000
+      gemini:
+        api-key: fixture-only
   identification:
     enabled: true
     scheduling-enabled: false

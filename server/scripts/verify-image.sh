@@ -57,7 +57,7 @@ if [ "${KNOW_RUN_EXTENSION_IT:-0}" = 1 ]; then
 fi
 docker run -d --name "$database" --network "$network" \
   -e POSTGRES_DB=know -e POSTGRES_USER=know -e POSTGRES_PASSWORD=smoke-only-password \
-  postgres:17.11-alpine >/dev/null
+  pgvector/pgvector:0.8.7-pg17 >/dev/null
 attempt=0
 until docker exec "$database" pg_isready -U know -d know >/dev/null 2>&1; do
   attempt=$((attempt + 1))

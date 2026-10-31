@@ -62,7 +62,10 @@ public abstract class BackendIntegrationSupport {
   private static final AtomicReference<ApplicationContext> SHARED_CONTEXT = new AtomicReference<>();
 
   private static PostgreSQLContainer startDatabase() {
-    var database = new PostgreSQLContainer("postgres:17.11-alpine");
+    var database =
+        new PostgreSQLContainer(
+            org.testcontainers.utility.DockerImageName.parse("pgvector/pgvector:0.8.7-pg17")
+                .asCompatibleSubstituteFor("postgres"));
     database.start();
     return database;
   }
@@ -88,6 +91,12 @@ public abstract class BackendIntegrationSupport {
 
   @TestConfiguration
   public static class AuthenticationFixture {
+    @Bean
+    @org.springframework.context.annotation.Primary
+    EmbeddingProviderFixture embeddingProviderFixture() {
+      return new EmbeddingProviderFixture();
+    }
+
     @Bean(destroyMethod = "close")
     ScreenshotProviderFixture screenshotProviderFixture() throws java.io.IOException {
       return new ScreenshotProviderFixture();

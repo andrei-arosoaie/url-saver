@@ -20,6 +20,7 @@ import { CategoriesPage } from "./categories/CategoriesPage";
 import { categoryApi, type CategoryApi } from "./categories/api";
 import { DeleteArticle } from "./timeline/DeleteArticle";
 import { IdentificationPanel } from "./identification/IdentificationPanel";
+import { RelatedArticles } from "./connections/RelatedArticles";
 import {
   useArticleLinks,
   ArticleLinkButton,
@@ -605,6 +606,15 @@ export function App({
                         key={`screenshot-${article.id}`}
                         articleId={article.id}
                       />
+                      {api.connections && (
+                        <RelatedArticles
+                          key={`connections-${article.id}`}
+                          article={article}
+                          api={api.connections}
+                          linkRevision={articleLinks.revision}
+                          onOpen={navigate}
+                        />
+                      )}
                       {article.content ? (
                         <ArticleBody
                           html={article.content}

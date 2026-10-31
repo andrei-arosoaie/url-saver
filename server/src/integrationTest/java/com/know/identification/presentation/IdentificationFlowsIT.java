@@ -35,7 +35,7 @@ class IdentificationFlowsIT extends BackendIntegrationSupport {
   @BeforeEach
   void fixtures() {
     jdbc.execute(
-        "truncate identification_jobs,identification_provider_health,screenshot_cleanup,article_screenshots,entity_completions,article_entities,entities,articles,categories,accounts");
+        "truncate embedding_provider_permits,embedding_provider_cooldowns,connection_shared_entities,article_connections,article_connection_exclusions,article_embeddings,article_connection_jobs,identification_jobs,identification_provider_health,screenshot_cleanup,article_screenshots,entity_completions,article_entities,entities,articles,categories,accounts");
     entityTestClock.set(NOW);
     IDENTIFICATION.reset();
     owner = UUID.randomUUID();

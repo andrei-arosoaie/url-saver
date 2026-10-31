@@ -137,6 +137,123 @@ paths:
       summary: Save an article
       tags:
       - Articles
+  /api/v1/articles/{articleId}/connections:
+    get:
+      description: "Newest saved article first, UUID descending on ties. The cursor\
+        \ is scoped to this account and source article. Existing results remain available\
+        \ while work is queued, paused or failed. No total result cap; load nextCursor\
+        \ until null."
+      operationId: listArticleConnections
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionPageResponse"
+          description: "Related articles, next cursor and current processing state"
+        "400":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor
+        "404":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: An article is missing or belongs to another account
+      summary: Related articles with reasons and processing state
+      tags:
+      - connection-controller
+  /api/v1/articles/{articleId}/connections/retry:
+    post:
+      operationId: retryArticleConnections
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "202":
+          description: Failed work requeued; existing results are preserved
+        "400":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor
+        "404":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: An article is missing or belongs to another account
+        "409":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: CONNECTIONS_DISABLED
+      summary: Retry failed connection work within shared provider limits
+      tags:
+      - connection-controller
+  /api/v1/articles/{articleId}/connections/{relatedArticleId}:
+    delete:
+      description: "Idempotent. Persists an exclusion even during generation, so future\
+        \ updates and backfill cannot recreate the pair. Neither article is deleted."
+      operationId: removeArticleConnection
+      parameters:
+      - in: path
+        name: articleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: relatedArticleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Pair excluded on both sides
+        "400":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Invalid request or cursor
+        "404":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: An article is missing or belongs to another account
+      summary: Permanently exclude this article pair in both directions
+      tags:
+      - connection-controller
   /api/v1/articles/{articleId}/entities:
     get:
       description: Newest entity createdAt/UUID first. Owner/article-bound cursor;
@@ -1842,6 +1959,66 @@ components:
             $ref: "#/components/schemas/CompletionYearResponse"
       required:
       - years
+    ConnectionPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelatedArticleResponse"
+        nextCursor:
+          type:
+          - string
+          - "null"
+        processing:
+          $ref: "#/components/schemas/ConnectionProcessingResponse"
+      required:
+      - items
+      - nextCursor
+      - processing
+    ConnectionProcessingResponse:
+      type: object
+      properties:
+        nextAttemptAt:
+          type:
+          - string
+          - "null"
+          format: date-time
+        pollIntervalMs:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type:
+          - string
+          - "null"
+        state:
+          type: string
+          enum:
+          - DISABLED
+          - SKIPPED
+          - QUEUED
+          - PROCESSING
+          - PAUSED
+          - RETRY_PENDING
+          - FAILED
+          - COMPLETE
+      required:
+      - nextAttemptAt
+      - pollIntervalMs
+      - reason
+      - state
+    ConnectionSharedEntityResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     CorrectCompletionRequest:
       type: object
       additionalProperties: false
@@ -2188,6 +2365,52 @@ components:
       - totalCompletionCount
       - type
       - version
+    RelatedArticleResponse:
+      type: object
+      properties:
+        category:
+          type: string
+        connectionId:
+          type: string
+          format: uuid
+        entityName:
+          type:
+          - string
+          - "null"
+        id:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+        semanticScore:
+          type:
+          - number
+          - "null"
+          format: double
+          maximum: 1
+          minimum: -1
+        semanticUpdating:
+          type: boolean
+        sharedEntities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectionSharedEntityResponse"
+        title:
+          type: string
+        url:
+          type: string
+      required:
+      - category
+      - connectionId
+      - entityName
+      - id
+      - savedAt
+      - semanticScore
+      - semanticUpdating
+      - sharedEntities
+      - title
+      - url
     SaveArticleRequest:
       type: object
       additionalProperties: false

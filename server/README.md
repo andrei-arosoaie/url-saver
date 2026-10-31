@@ -59,6 +59,49 @@ Local image verification: build the application with verify-wsl.ps1, then in Deb
 
 ## Local configuration
 
+Phase 7 Gemini credentials: fill `know.connections.embedding.gemini.api-key`
+in `config/embedding-secrets.yml` (git-ignored). The committed template is
+`config/embedding-secrets.example.yml`. Both files use `gemini-embedding-001`.
+For Render, create a secret file named `embedding-secrets.yml`; it is loaded
+from `/etc/secrets/embedding-secrets.yml`. Configuring a key alone does not send API
+requests. Both `know.connections.enabled` and
+`know.connections.embedding.live-requests-enabled` default to false. Review the
+current Gemini terms and confirm an unbilled project before enabling live calls;
+`unbilled-project-confirmed` is an operator safeguard, not a provider billing switch.
+
+Phase 7 uses pgvector (`pgvector/pgvector:0.8.7-pg17` for local development and tests).
+Migration V7 installs the extension. The database migration role needs permission
+to enable it. Application connections include `public, extensions` in the search path.
+Exact cosine comparisons initially avoid approximate-index recall loss. The 0.80
+threshold and symmetric token-weighted best-chunk aggregation require real-model
+relevance validation before release; controlled-vector tests do not establish quality.
+
+Processing is durable in PostgreSQL. Local workers share leased provider permits,
+rate-limit cooldowns and budgets across instances. Default local safety budgets
+are 5 requests/minute and 100 embedding requests/day; these are configurable caps,
+not claims about your Google quota. Token counting and embedding share concurrency;
+only embedding calls consume the local daily embedding budget. A crash may repeat
+an external call, while cached chunks and publication fences prevent stale results.
+
+### Phase 7 webapp verification
+
+`connectionsBrowserPreview` starts a disposable PostgreSQL/pgvector database, the
+real backend on port 18096 and local Gemini HTTP responses controlled on port
+18097. It loads only the integration configuration, never local secrets. Run it
+with the Debian Docker toolchain and host networking (`TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1`).
+Build the webapp first. Then launch an isolated Firefox BiDi profile and run
+`npm run test:browser:connections` in `webapp`, with these environment variables:
+
+- `KNOW_IT_API_ORIGIN`: local disposable backend origin.
+- `KNOW_CONNECTIONS_CONTROL_ORIGIN`: local fixture control origin.
+- `KNOW_FIREFOX_BIDI_URL`: isolated Firefox WebSocket session URL.
+- `KNOW_BROWSER_PROOF_DIR`: output directory for screenshots.
+
+The browser check verifies processing, shared and semantic reasons, article
+navigation/Back, removal on both sides after reload, manual retry, quota resume
+and link-only behavior at desktop and mobile widths. It consumes no live quota.
+It does not replace actual extension/device verification or model relevance tests.
+
 Set KNOW_LOCAL_DATABASE_PASSWORD for Docker Compose, then run docker compose up -d from server. Copy config/secrets.example.yml to config/secrets.yml and replace CHANGE_ME. Spring Boot uses mounted YAML, not the Compose bootstrap variable. Missing secrets.yml fails startup; secrets are never committed.
 
 Application records/ports stay separate from presentation records and infrastructure entities. MapStruct maps both boundaries; constructor injection only. Application transactions, explicit database queries, OSIV disabled, Flyway migrations and Hibernate validation. Only the minimal accounts table exists until security implementation.

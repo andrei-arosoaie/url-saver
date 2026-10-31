@@ -14,7 +14,10 @@ public class IdentificationBrowserPreview {
   static volatile CountDownLatch held = new CountDownLatch(0);
 
   public static void main(String[] ignored) throws Exception {
-    var db = new PostgreSQLContainer("postgres:17.11-alpine");
+    var db =
+        new PostgreSQLContainer(
+            org.testcontainers.utility.DockerImageName.parse("pgvector/pgvector:0.8.7-pg17")
+                .asCompatibleSubstituteFor("postgres"));
     db.start();
     var providers = new IdentificationProviderFixture();
     var app =

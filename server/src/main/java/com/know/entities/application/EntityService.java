@@ -26,6 +26,7 @@ public class EntityService {
   private final PageLimits limits;
   private final EntitySettings settings;
   private final Clock entityClock;
+  private final org.springframework.context.ApplicationEventPublisher events;
 
   public Details detail(UUID id) {
     return owned(current.requireId(), id);
@@ -165,6 +166,7 @@ public class EntityService {
                     now()));
     var previous = store.link(owner, articleId, entity.id());
     var link = previous.orElseGet(() -> store.addLink(owner, articleId, entity.id(), now()));
+    if (previous.isEmpty()) events.publishEvent(new ArticleEntitiesChanged(owner, articleId));
     return new LinkResult(
         existing.isEmpty() ? "CREATED" : previous.isPresent() ? "UNCHANGED" : "LINKED",
         entity,
@@ -177,10 +179,9 @@ public class EntityService {
     article(owner, articleId);
     var entity = owned(owner, entityId);
     var previous = store.link(owner, articleId, entityId);
-    return new LinkResult(
-        previous.isPresent() ? "UNCHANGED" : "LINKED",
-        entity,
-        previous.orElseGet(() -> store.addLink(owner, articleId, entityId, now())));
+    var link = previous.orElseGet(() -> store.addLink(owner, articleId, entityId, now()));
+    if (previous.isEmpty()) events.publishEvent(new ArticleEntitiesChanged(owner, articleId));
+    return new LinkResult(previous.isPresent() ? "UNCHANGED" : "LINKED", entity, link);
   }
 
   @Transactional
@@ -188,7 +189,10 @@ public class EntityService {
     var owner = writeOwner();
     article(owner, articleId);
     owned(owner, entityId);
-    store.unlink(owner, articleId, entityId);
+    if (store.link(owner, articleId, entityId).isPresent()) {
+      store.unlink(owner, articleId, entityId);
+      events.publishEvent(new ArticleEntitiesChanged(owner, articleId));
+    }
   }
 
   public Page<ArticleSummary> sources(UUID entityId, Integer limit, String cursor) {

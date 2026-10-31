@@ -101,6 +101,7 @@ export function useArticleLinks(article: Article | null, api: EntityApi) {
       );
   }
   return {
+    revision,
     article,
     page,
     items,

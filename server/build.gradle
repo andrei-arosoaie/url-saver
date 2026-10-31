@@ -99,6 +99,14 @@ tasks.register('identificationBrowserPreview', JavaExec) {
     mainClass = 'com.know.support.IdentificationBrowserPreview'
 }
 
+tasks.register('connectionsBrowserPreview', JavaExec) {
+    description = 'Starts disposable pgvector PostgreSQL and a local Gemini protocol fixture; no live provider calls.'
+    group = 'verification'
+    dependsOn integrationTestClasses
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    mainClass = 'com.know.support.ConnectionsBrowserPreview'
+}
+
 tasks.register('exportOpenApi', Copy) {
     description = 'Exports Springdoc YAML from the real HTTP integration server to the checked-in contract.'
     group = 'documentation'

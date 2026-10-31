@@ -2,6 +2,9 @@ server:
   address: 0.0.0.0
   port: ${PORT:8080}
 spring:
+  datasource:
+    hikari:
+      connection-init-sql: SET search_path TO public, extensions
   application:
     name: know
   jackson:
@@ -9,7 +12,7 @@ spring:
       fail-on-unknown-properties: true
       accept-float-as-int: false
   config:
-    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml
+    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml,optional:file:./config/embedding-secrets.yml,optional:file:/etc/secrets/embedding-secrets.yml
   servlet:
     multipart:
       max-file-size: 20MB
