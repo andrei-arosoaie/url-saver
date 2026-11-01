@@ -28,7 +28,20 @@ class OpenApiContractIT extends BackendIntegrationSupport {
     var document = json.readTree(response.body());
     assertThat(document.get("servers").get(0).get("url").asText()).isEqualTo("/");
     var paths = document.get("paths");
-    assertThat(paths.size()).isEqualTo(17);
+    assertThat(paths.size()).isEqualTo(27);
+    for (var path :
+        List.of(
+            "/api/v1/tvmaze/shows",
+            "/api/v1/tvmaze/settings",
+            "/api/v1/tvmaze/entities",
+            "/api/v1/entities/{id}/tv-show",
+            "/api/v1/entities/{id}/tv-show/position",
+            "/api/v1/entities/{id}/tv-show/change-show",
+            "/api/v1/entities/{id}/tv-show/mark-seen",
+            "/api/v1/entities/{id}/tv-show/seasons",
+            "/api/v1/entities/{id}/tv-show/seasons/{seasonId}/episodes",
+            "/api/v1/entities/{id}/tv-show/episodes/{episodeId}/watched"))
+      assertThat(paths.has(path)).as(path).isTrue();
     assertThat(
             paths
                 .path("/api/v1/articles/{articleId}/connections")

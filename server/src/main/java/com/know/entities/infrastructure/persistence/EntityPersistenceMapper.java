@@ -9,6 +9,7 @@ import org.mapstruct.*;
 interface EntityPersistenceMapper {
   @Mapping(target = "lastCompletedAt", source = "last")
   @Mapping(target = "totalCompletionCount", source = "count")
+  @Mapping(target = "tvShow", expression = "java(entity.tvSummary())")
   Details details(TrackedEntity entity, Instant last, long count);
 
   @Mapping(target = "completionCount", source = "count")

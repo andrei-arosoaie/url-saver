@@ -1,0 +1,92 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/tvmaze/shows",
+    "title": "Search TVMaze shows",
+    "request": "?query=Under%20the%20Dome",
+    "response": "200 {items:[{tvmazeId,name,premiereYear,providerStatus,posterUrl}], matchStatus: UNAMBIGUOUS|NEEDS_SELECTION|NO_MATCH}",
+    "rules": "No private data sent to TVMaze. Draft safe-auto-match rule: exactly one exact case-insensitive title match among returned candidates, with any supplied year/provider ID agreeing. Otherwise require selection. TVMaze search rank alone is not proof of identity. Cache search responses; respect independent provider backoff. Approved autocomplete: minimum 2 characters, 300ms debounce and initial 8 suggestions with more accessible; configurable. PostgreSQL cache shared across pods and application restarts; query-keyed full candidate payload with timestamps and refresh lease. Failed searches must not become empty successful results. Cache TTLs are configurable technical proposals.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/entities/{entityId}/tv-show",
+    "title": "Link a TVMaze show",
+    "request": "{entityVersion:0,tvmazeId:1}",
+    "response": "200 {entityId,tvmazeId,version,lastWatchedEpisodeId:null,metadataStatus}",
+    "rules": "Owned TV_SHOW entity only. Auto-submit only when safe match rule holds; otherwise explicit user selection. Same mapping is idempotent; different mapping requires explicit Change show confirmation; otherwise return 409 TV_SHOW_MAPPING_CONFLICT. Confirmed replacement resets old position/checkmarks atomically. Permit same-title entities with different TVMaze IDs; enforce account-scoped provider identity. Preserve manual title, entity ID/status/history; linking is not completion. Schedule catalog refresh transactionally.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}/tv-show",
+    "title": "Read show details and personal progress",
+    "request": "No body",
+    "response": "200 {entityId,version,entityVersion,alias,status:TO_BE_SEEN|SEEING|SEEN,show:{tvmazeId,name,posterUrl,summary,genres,providerStatus,averageRuntime,tvmazeRating,imdbUrl,nextEpisode},lastWatchedEpisodeId,watchedCount,airedCount,newEpisodesAvailable,canMarkSeen,metadata:{state,fetchedAt,nextAttemptAt}}",
+    "rules": "Owner required. Serve cached metadata immediately; stale > configured 24h enqueues/coalesces background refresh. Cache miss returns 200 with show:null and metadata.state=PENDING, not an empty completed catalog. No IMDb score or cast. Unknown catalog completeness is never treated as all episodes watched. TV_SHOW allows SEEING as an active-viewing status. Existing entity PATCH/creation accept it after Phase 8 enum/constraint extension; selecting it preserves completion history and episode progress. Saving a last-watched position or marking an episode watched automatically changes TO_BE_SEEN to SEEING; unchecking does not. Matched title is canonical/read-only; show optional alias after it. Search may match alias without changing provider identity. Clear newEpisodesAvailable when all currently aired regular episodes are marked watched. Position-only updates do not clear it without corresponding checkmarks. Clearing is separate from explicit Mark show seen.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}/tv-show/seasons",
+    "title": "Read seasons",
+    "request": "No body",
+    "response": "200 {items:[{id,number,name,regularEpisodeCount,watchedCount}],metadataStatus}",
+    "rules": "Verify ownership through mapping. Counts use regular episodes; no fabricated count when catalog incomplete. Provider dates may be absent.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/entities/{entityId}/tv-show/seasons/{seasonId}/episodes",
+    "title": "Read season episodes",
+    "request": "No body",
+    "response": "200 {items:[{id,season,number,title,airAt,airDate,runtime,imageUrl,summary,watched,canMarkWatched}],metadataStatus}",
+    "rules": "Validate season belongs to mapped show. Only regular episodes exposed; future regular episodes visible but not watchable. Episode titles/images visible; summaries collapsed in UI.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/entities/{entityId}/tv-show/position",
+    "title": "Save last-watched position",
+    "request": "{version:2,episodeId:123,markPreviousWatched:false}",
+    "response": "200 {version,entityVersion,status,lastWatchedEpisodeId,watchedCount,canMarkSeen,newEpisodesAvailable}",
+    "rules": "Explicit true only after user confirms bulk marking; default false. Validate regular aired episode belongs to mapped show. Update position, optionally add watched rows through selected episode in aired order, in one transaction. Never clear existing flags when moving backward. Preserve completion history; automatically change TO_BE_SEEN to SEEING on position save. Offer Mark show seen separately. Atomically change TO_BE_SEEN to SEEING when saving a position or setting watched=true; preserve history. watched=false does not change status. Return resulting entityVersion/status. Existing Seen is not downgraded by old-progress edits. Clear newEpisodesAvailable when all currently aired regular episodes are marked watched. Position-only updates do not clear it without corresponding checkmarks. Clearing is separate from explicit Mark show seen.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/entities/{entityId}/tv-show/episodes/{episodeId}/watched",
+    "title": "Set an episode checkmark",
+    "request": "{version:3,watched:true}",
+    "response": "200 {version,entityVersion,status,episodeId,watched,lastWatchedEpisodeId,watchedCount,canMarkSeen,newEpisodesAvailable}",
+    "rules": "Version guards aggregate progress; validate regular episode/show. Manual watched=true is allowed for unknown airing information; known future episodes remain blocked. Add/remove watched row idempotently; no-op leaves version unchanged. Unchecking does not move last-watched position or erase show completion history. Never automatically mark show Seen. Atomically change TO_BE_SEEN to SEEING when saving a position or setting watched=true; preserve history. watched=false does not change status. Return resulting entityVersion/status. Existing Seen is not downgraded by old-progress edits. Clear newEpisodesAvailable when all currently aired regular episodes are marked watched. Position-only updates do not clear it without corresponding checkmarks. Clearing is separate from explicit Mark show seen.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/entities/{entityId}/tv-show/mark-seen",
+    "title": "Explicitly mark show Seen",
+    "request": "{version:4,entityVersion:7}",
+    "response": "200 {version,entityVersion,status:SEEN,completion:{id,completedAt}}",
+    "rules": "Require at least one aired regular episode, a successfully refreshed/complete episode set and all aired regular episodes watched. Reject if eligibility changed; client reloads. Atomically use existing entity completion behavior, record server-now UTC and watermark, preserve history. Repeated already-SEEN action does not silently append repeat completion; use existing explicit Add completion for repeats.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/entities/{entityId}/tv-show",
+    "title": "Edit the optional alias",
+    "request": "{version:2,alias:\"My label\"} or {version:2,alias:null}",
+    "response": "200 {entityId,version,alias,canonicalTitle}",
+    "rules": "Owned mapped TV_SHOW only. Update/clear alias, preserve canonical title, provider mapping, progress and completion history. Stale version gives 409; no-op preserves version. Backend rejects title edits through existing entity PATCH when linked: 400 IDENTIFIED_TITLE_READ_ONLY. Unmatched manual titles remain editable. Alias length follows configurable title length limit.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/entities/{entityId}/tv-show/change-show",
+    "title": "Confirm replacement of an incorrect show match",
+    "request": "{version:3,entityVersion:8,tvmazeId:123,confirmResetProgress:true}",
+    "response": "200 {entityId,version,entityVersion,tvmazeId,canonicalTitle,alias,status:TO_BE_SEEN,lastWatchedEpisodeId:null,watchedCount:0}",
+    "rules": "Explicit confirmation required. Validate owner and TV_SHOW; verify destination. Atomically remap, reset old episode position/checkmarks/watermark and enqueue refresh. Cancel sends no mutation. Preserve article links and completion history. Different provider IDs may share a title; duplicate same-owner provider ID conflicts. Approved: atomically reset current status to TO_BE_SEEN and preserve the existing alias. Preserve all completion history. Confirmation explicitly explains reset, status and retained alias.",
+    "errors": "401 unauthenticated; 404 missing/foreign owned entity, mapping or child; 400 invalid request/non-TV_SHOW; 409 VERSION_CONFLICT, EPISODE_NOT_AIRED, CATALOG_NOT_READY, SHOW_NOT_CAUGHT_UP or mapping conflict as applicable. Provider 429/5xx returns explicit metadata waiting/failure; preserve cached data and progress. Retain Spring error JSON with reason. No account ID trusted from client."
+  }
+]

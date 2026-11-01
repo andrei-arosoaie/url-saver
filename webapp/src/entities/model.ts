@@ -34,7 +34,7 @@ export const types = {
   TV_SHOW: {
     label: "TV shows",
     singular: "TV show",
-    statuses: ["TO_BE_SEEN", "SEEN"],
+    statuses: ["TO_BE_SEEN", "SEEING", "SEEN"],
     done: "SEEN",
     date: "Seen on",
     year: "Seen year",
@@ -57,6 +57,7 @@ export function statusLabel(status: string) {
         READ: "Read",
         TO_BE_SEEN: "To be seen",
         SEEN: "Seen",
+        SEEING: "Seeing",
         TO_PLAY: "To play",
         PLAYING: "Playing",
         FINISHED: "Finished",

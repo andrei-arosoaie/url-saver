@@ -6,6 +6,7 @@ import { usePage } from "./usePage";
 import { CompletionHistory } from "./CompletionHistory";
 import { exactCaptureTime } from "../timeline/dates";
 import styles from "./Entities.module.css";
+import { TvDetails } from "./TvDetails";
 
 export function EntityDetails({
   id,
@@ -84,7 +85,7 @@ export function EntityDetails({
     try {
       const fresh = await api.update(
         entity,
-        { title, status },
+        { ...(entity.tvShow ? {} : { title }), status },
         controller.signal,
       );
       if (!controller.signal.aborted) {
@@ -108,6 +109,7 @@ export function EntityDetails({
   const sources = usePage(sourceLoad);
   const config = entity ? types[entity.type] : null;
   const blocked = busy || loading || requiresReload(error);
+  const Disclosure = entity?.type === "TV_SHOW" ? "details" : "div";
   return (
     <aside
       ref={panel}
@@ -136,55 +138,72 @@ export function EntityDetails({
             {config.singular[0].toUpperCase() + config.singular.slice(1)}{" "}
             details
           </h3>
-          <form className={styles.form} onSubmit={(event) => void save(event)}>
-            <label>
-              Title
-              <input
-                required
-                value={title}
-                disabled={blocked}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
-            <label>
-              Created
-              <time
-                className={styles.createdValue}
-                dateTime={entity.createdAt}
-                title={entity.createdAt}
-              >
-                {exactCaptureTime(entity.createdAt)}
-              </time>
-            </label>
-            <label>
-              Status
-              <select
-                value={status}
-                disabled={blocked}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                {config.statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {statusLabel(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Last completion
-              <span className={styles.createdValue}>
-                {entity.lastCompletedAt
-                  ? exactCaptureTime(entity.lastCompletedAt)
-                  : "—"}
-              </span>
-            </label>
-            <div className={styles.historyActions}>
-              <button className={styles.action} disabled={blocked}>
-                {busy ? "Saving…" : "Save"}
-              </button>
-              <span className={styles.help}>Editable title & status</span>
-            </div>
-          </form>
+          {entity.type === "TV_SHOW" && (
+            <TvDetails
+              entity={entity}
+              revision={revision + reload}
+              onChanged={onChanged}
+            />
+          )}
+          <Disclosure>
+            {entity.type === "TV_SHOW" && <summary>Edit entity</summary>}
+            <form
+              className={styles.form}
+              onSubmit={(event) => void save(event)}
+            >
+              <label>
+                Title
+                <input
+                  required
+                  value={title}
+                  disabled={blocked || Boolean(entity.tvShow)}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </label>
+              <label>
+                Created
+                <time
+                  className={styles.createdValue}
+                  dateTime={entity.createdAt}
+                  title={entity.createdAt}
+                >
+                  {exactCaptureTime(entity.createdAt)}
+                </time>
+              </label>
+              <label>
+                Status
+                <select
+                  value={status}
+                  disabled={blocked}
+                  onChange={(event) => setStatus(event.target.value)}
+                >
+                  {config.statuses.map((s) => (
+                    <option key={s} value={s}>
+                      {statusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Last completion
+                <span className={styles.createdValue}>
+                  {entity.lastCompletedAt
+                    ? exactCaptureTime(entity.lastCompletedAt)
+                    : "—"}
+                </span>
+              </label>
+              <div className={styles.historyActions}>
+                <button className={styles.action} disabled={blocked}>
+                  {busy ? "Saving…" : "Save"}
+                </button>
+                <span className={styles.help}>
+                  {entity.tvShow
+                    ? "Identified title is read-only. Edit the alias above."
+                    : "Editable title & status"}
+                </span>
+              </div>
+            </form>
+          </Disclosure>
           <CompletionHistory
             key={entity.id}
             entity={entity}
@@ -196,45 +215,48 @@ export function EntityDetails({
               blocked || title !== entity.title || status !== entity.status
             }
           />
-          <section
-            className={styles.linked}
-            aria-label="Linked timeline entries"
-          >
-            <h4>Linked timeline entries</h4>
-            {sources.loading && <p role="status">Loading sources…</p>}
-            {sources.error && (
-              <p role="alert">
-                {sources.error}
-                <button className={styles.textAction} onClick={sources.retry}>
-                  Try again
+          <Disclosure>
+            {entity.type === "TV_SHOW" && <summary>Sources</summary>}
+            <section
+              className={styles.linked}
+              aria-label="Linked timeline entries"
+            >
+              <h4>Linked timeline entries</h4>
+              {sources.loading && <p role="status">Loading sources…</p>}
+              {sources.error && (
+                <p role="alert">
+                  {sources.error}
+                  <button className={styles.textAction} onClick={sources.retry}>
+                    Try again
+                  </button>
+                </p>
+              )}
+              {!sources.loading && !sources.error && !sources.items.length && (
+                <p>No linked page.</p>
+              )}
+              {sources.items.map((source) => (
+                <a
+                  key={source.id}
+                  href={`#article/${source.id}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onOpenArticle(source.id);
+                  }}
+                >
+                  {source.title} ↗
+                </a>
+              ))}
+              {sources.cursor && !sources.error && (
+                <button
+                  className={styles.action}
+                  disabled={sources.loading}
+                  onClick={sources.more}
+                >
+                  Load more sources
                 </button>
-              </p>
-            )}
-            {!sources.loading && !sources.error && !sources.items.length && (
-              <p>No linked page.</p>
-            )}
-            {sources.items.map((source) => (
-              <a
-                key={source.id}
-                href={`#article/${source.id}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onOpenArticle(source.id);
-                }}
-              >
-                {source.title} ↗
-              </a>
-            ))}
-            {sources.cursor && !sources.error && (
-              <button
-                className={styles.action}
-                disabled={sources.loading}
-                onClick={sources.more}
-              >
-                Load more sources
-              </button>
-            )}
-          </section>
+              )}
+            </section>
+          </Disclosure>
         </>
       )}
     </aside>

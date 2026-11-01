@@ -162,6 +162,7 @@ function statusLabelForTest(value: string) {
       READ: "Read",
       TO_BE_SEEN: "To be seen",
       SEEN: "Seen",
+      SEEING: "Seeing",
       TO_PLAY: "To play",
       PLAYING: "Playing",
       FINISHED: "Finished",

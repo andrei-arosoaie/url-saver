@@ -1,0 +1,93 @@
+.app[data-entity-type="tv"] .entity-workspace { grid-template-columns: minmax(0, 1fr) 330px; }
+.tv-entity-details { font: 12px/1.5 system-ui, sans-serif; }
+.tv-mini-hero { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; }
+.tv-mini-poster { width: 56px; height: 76px; overflow: hidden; border-radius: 6px; }
+.tv-mini-poster svg { width: 100%; height: 100%; display: block; }
+.tv-entity-details h3 { font: 650 21px/1.2 system-ui; margin: 3px 0 5px; letter-spacing: -.5px; }
+.tv-eyebrow { display: block; color: var(--muted); font-size: 8px; letter-spacing: 1.3px; font-weight: 650; }
+.tv-mini-meta { color: var(--muted); font-size: 10px; }
+.tv-mini-links { display: flex; align-items: center; gap: 12px; margin-top: 6px; font-size: 10px; }
+.tv-mini-links strong { color: var(--blue); font-weight: 650; }
+.tv-mini-links strong span { color: var(--muted); font-size: 9px; font-weight: 400; }
+.tv-mini-links a { text-decoration: none; color: var(--muted); }
+.tv-personal-line { display: flex; align-items: center; gap: 9px; color: var(--muted); margin: 13px 0 8px; font-size: 9px; }
+.tv-personal-line .status-chip { font-size: 9px; padding: 3px 8px; }
+.tv-mini-synopsis, .tv-episode-disclosure, .tv-entity-edit { border: 0; padding: 8px 0; margin: 0; }
+.tv-mini-synopsis summary, .tv-entity-edit summary { font-size: 10px; color: var(--muted); font-weight: 500; cursor: pointer; }
+.tv-mini-synopsis p, .tv-entity-details details p { font-size: 11px; color: var(--muted); margin: 8px 0; }
+.tv-position-line { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
+.tv-position-line strong { display: block; font-size: 13px; margin-top: 2px; }
+.tv-position-picker { flex: 1; min-width: 0; }
+.tv-position-picker select, .tv-season-line select { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: 10px system-ui; padding: 8px; }
+.tv-icon-button { min-width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 6px; color: var(--blue); background: var(--panel); cursor: pointer; }
+.tv-watch-meter { height: 3px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 12px; }
+.tv-watch-meter span { display: block; height: 100%; background: var(--blue); border-radius: inherit; }
+.tv-progress-caption { margin: 6px 0 12px; font-size: 9px; color: var(--muted); }
+.tv-episode-disclosure { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 11px 0; }
+.tv-episode-disclosure > summary { font-size: 12px; font-weight: 650; cursor: pointer; }
+.tv-episode-disclosure > summary > span { float: right; color: var(--muted); font-size: 9px; font-weight: 400; }
+.tv-season-line { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 10px; color: var(--muted); }
+.tv-season-line select { width: 60px; padding: 5px; }
+.tv-mini-episode { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.tv-mini-episode:last-child { border: 0; padding-bottom: 1px; }
+.tv-episode-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.tv-episode-top label { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+.tv-episode-top input { accent-color: #2876dc; margin: 0; width: 15px; height: 15px; }
+.tv-episode-top > span { color: var(--muted); font-size: 9px; }
+.tv-episode-copy { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 9px; margin-top: 8px; align-items: start; }
+.tv-episode-copy > svg { width: 60px; border-radius: 4px; }
+.tv-episode-copy strong { font-size: 11px; font-weight: 600; }
+.tv-episode-copy details { border: 0; padding: 3px 0 0; }
+.tv-episode-copy summary { font-size: 9px; color: var(--muted); font-weight: 400; }
+.tv-next { font-size: 10px; margin: 11px 0 5px; color: var(--muted); }
+.tv-sample-note, .tv-completion-note { font-size: 8px; color: var(--muted); margin: 4px 0; }
+.tv-new-banner { font-size: 10px; color: var(--blue); background: var(--blue-soft); border-radius: 5px; padding: 5px 8px; margin: 8px 0; }
+.tv-count { color: var(--muted); font-size: 10px; }
+.tv-new-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--blue); margin-left: 5px; vertical-align: middle; }
+.tv-entity-edit { margin-top: 5px; }
+.tv-entity-edit .detail-form { margin-top: 13px; }
+.tv-entity-edit .entity-linked { margin: 0; padding: 6px 0; border: 0; }
+.tv-seen-button { margin-bottom: 12px; }
+body:not(:has(.app[data-entity-type="tv"])) #entity-tv-demo { display: none; }
+body[data-preview-platform="mobile"] .app[data-entity-type="tv"] .entity-workspace { grid-template-columns: 1fr; }
+body[data-preview-platform="mobile"] .tv-position-picker select, body[data-preview-platform="mobile"] .tv-icon-button { min-height: 40px; }
+body[data-preview-platform="mobile"] .tv-episode-top label { min-height: 40px; }
+
+.tv-title-alias{font-size:13px;font-weight:400;color:var(--muted);letter-spacing:0}.entity-alias{font-size:11px;font-weight:400;color:var(--muted)}.tv-alias-hint{font-size:9px;color:var(--muted)}.tv-entity-edit input[readonly]{background:var(--soft);color:var(--muted);border-style:dashed;cursor:default}
+
+.tv-position-line{display:block}.tv-position-current{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.tv-position-current strong{margin:0;font-size:12px}.tv-position-selectors{display:grid;grid-template-columns:65px minmax(0,1fr) 32px;gap:7px;align-items:end}.tv-position-selectors label{display:grid;gap:4px;font-size:9px;color:var(--muted)}.tv-position-selectors select{min-width:0;width:100%;height:32px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:10px system-ui;padding:6px}.tv-icon-button:disabled{opacity:.4;cursor:default}body[data-preview-platform=mobile] .tv-position-selectors select{min-height:40px;height:40px}
+
+.tv-position-badges{display:inline-flex;gap:4px;vertical-align:middle;font:650 10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.3px}.tv-position-badges>span{display:inline-block;padding:4px 6px;border-radius:4px}.tv-season-badge{background:var(--soft);color:var(--muted);border:1px solid var(--line)}.tv-episode-badge{background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue)}.board-card .tv-count{font:10px system-ui;color:var(--muted)}
+
+.tv-new-episode-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;margin-left:5px;vertical-align:middle;border:1px solid var(--blue);border-radius:6px;background:var(--blue-soft);color:var(--blue)}.tv-new-episode-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linejoin:round}.tv-new-episode-icon svg circle{fill:var(--blue);stroke:var(--panel);stroke-width:1.5}.tv-new-episode-icon svg path{fill:currentColor;stroke:none}.tv-new-tooltip{display:none;position:absolute;left:0;bottom:calc(100% + 6px);z-index:5;white-space:nowrap;padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);font:10px system-ui;box-shadow:0 3px 10px #0002}.tv-new-episode-icon:hover .tv-new-tooltip,.tv-new-episode-icon:focus .tv-new-tooltip{display:block}.tv-new-episode-icon:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+
+.tv-new-badge{width:auto;height:auto;padding:3px 6px;border:1px solid #27845066;border-radius:4px;background:#27845014;color:#247c48;font:700 9px/1.3 system-ui;letter-spacing:.6px}html[data-theme=dark] .tv-new-badge{border-color:#64d99a66;background:#64d99a14;color:#64d99a}.tv-new-badge:focus-visible{outline-color:#278450}html[data-theme=dark] .tv-new-badge:focus-visible{outline-color:#64d99a}
+
+.tv-new-banner{color:#247c48;background:#27845014}.tv-new-badge .tv-new-tooltip{color:#247c48}html[data-theme=dark] .tv-new-banner{color:#64d99a;background:#64d99a14}html[data-theme=dark] .tv-new-badge .tv-new-tooltip{color:#64d99a}
+.tv-autocomplete{display:block;position:relative;font-size:11px}
+.tv-search-results{display:grid;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:5px;background:var(--panel);max-height:280px;overflow-y:auto}
+.tv-search-results button{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel);border:0;border-bottom:1px solid var(--line);color:var(--ink);text-align:left;cursor:pointer;font:12px system-ui}
+.tv-search-results button:last-child{border-bottom:0}
+.tv-search-results button:hover,.tv-search-results [aria-selected=true]{background:var(--blue-soft)}
+.tv-result-poster{display:grid;place-items:center;width:26px;height:36px;flex-shrink:0;background:var(--blue-soft);color:var(--blue);border-radius:4px;font-weight:700}
+.tv-search-results strong{display:block;font-weight:600;font-size:12px}
+.tv-search-results small{display:block;margin-top:3px;color:var(--muted);font-size:10px}
+.tv-result-arrow{margin-left:auto;color:var(--muted)}
+.tv-search-hint{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:5px}
+.tv-search-hint:empty{display:none}
+.tv-change-selection,.tv-change-show{border:0;border-radius:4px;background:transparent;color:var(--blue);font:11px system-ui;padding:4px 0;text-align:left;cursor:pointer}
+.tv-change-show{margin-top:2px}
+.tv-change-selection:hover,.tv-change-show:hover{text-decoration:underline}
+#entity-tv-change{width:420px}
+#entity-tv-change-form{display:grid;gap:15px}
+#entity-tv-change-form>label{display:grid;gap:6px;font-size:11px;color:var(--muted)}
+#tv-change-title{padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:13px system-ui;width:100%;box-sizing:border-box}
+.tv-change-warning{font-size:12px;line-height:1.7;background:var(--soft);padding:11px;border-radius:7px;margin:0}
+#tv-change-error:empty{display:none}
+#tv-change-error,.form-error{font-size:11px;color:var(--amber)}
+.entity-modal{max-height:85vh;overflow-y:auto}
+.tv-release-year{font-size:10px;font-weight:400;color:var(--muted)}
+.tv-unmatched{padding:13px;background:var(--soft);border-radius:8px;margin:0 0 15px}
+.tv-unmatched p{font-size:12px;margin:0 0 9px;color:var(--muted)}
+.small-action:disabled{opacity:.45;cursor:default}
+body[data-preview-platform=mobile] .tv-search-results button{min-height:46px}

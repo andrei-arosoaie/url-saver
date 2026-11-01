@@ -107,6 +107,14 @@ tasks.register('connectionsBrowserPreview', JavaExec) {
     mainClass = 'com.know.support.ConnectionsBrowserPreview'
 }
 
+tasks.register('tvBrowserPreview', JavaExec) {
+    description = 'Starts disposable PostgreSQL and a local TV catalog fixture; no live provider calls.'
+    group = 'verification'
+    dependsOn integrationTestClasses
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    mainClass = 'com.know.support.TvBrowserPreview'
+}
+
 tasks.register('exportOpenApi', Copy) {
     description = 'Exports Springdoc YAML from the real HTTP integration server to the checked-in contract.'
     group = 'documentation'

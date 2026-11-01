@@ -1708,6 +1708,597 @@ paths:
       summary: Correct a completion timestamp
       tags:
       - Entities
+  /api/v1/entities/{id}/tv-show:
+    get:
+      operationId: details
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+    patch:
+      operationId: alias
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AliasRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+    put:
+      operationId: link
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/change-show:
+    post:
+      operationId: change
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/episodes/{episodeId}/watched:
+    put:
+      operationId: watch
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: episodeId
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/mark-seen:
+    post:
+      operationId: seen
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeenRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/position:
+    patch:
+      operationId: position
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/seasons:
+    get:
+      operationId: seasons
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/entities/{id}/tv-show/seasons/{seasonId}/episodes:
+    get:
+      operationId: episodes
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: seasonId
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/tvmaze/entities:
+    post:
+      operationId: createIdentifiedTvShow
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Atomically create a TV show with selected provider identity
+      tags:
+      - tv-controller
+  /api/v1/tvmaze/settings:
+    get:
+      operationId: settings
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      tags:
+      - tv-controller
+  /api/v1/tvmaze/shows:
+    get:
+      operationId: searchTvShows
+      parameters:
+      - in: query
+        name: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Search shared TV show catalog
+      tags:
+      - tv-controller
 components:
   schemas:
     AddArticleEntityRequest:
@@ -1766,6 +2357,16 @@ components:
       - entity
       - link
       - outcome
+    AliasRequest:
+      type: object
+      properties:
+        alias:
+          type: string
+        version:
+          type: integer
+          format: int64
+      required:
+      - alias
     ApiErrorResponse:
       type: object
       description: Spring Boot default error JSON with optional application reason
@@ -1907,6 +2508,20 @@ components:
           type: boolean
         key:
           type: string
+        version:
+          type: integer
+          format: int64
+    ChangeRequest:
+      type: object
+      properties:
+        confirmResetProgress:
+          type: boolean
+        entityVersion:
+          type: integer
+          format: int64
+        tvmazeId:
+          type: integer
+          format: int64
         version:
           type: integer
           format: int64
@@ -2065,6 +2680,14 @@ components:
       required:
       - title
       - type
+    CreateRequest:
+      type: object
+      properties:
+        status:
+          type: string
+        tvmazeId:
+          type: integer
+          format: int64
     EditCategoryRequest:
       type: object
       additionalProperties: false
@@ -2192,6 +2815,8 @@ components:
         totalCompletionCount:
           type: integer
           format: int64
+        tvShow:
+          $ref: "#/components/schemas/TvSummary"
         type:
           type: string
           enum:
@@ -2240,6 +2865,8 @@ components:
         totalCompletionCount:
           type: integer
           format: int64
+        tvShow:
+          $ref: "#/components/schemas/TvSummary"
         type:
           type: string
           enum:
@@ -2321,6 +2948,15 @@ components:
       - requestedAt
       - status
       - subjects
+    LinkRequest:
+      type: object
+      properties:
+        entityVersion:
+          type: integer
+          format: int64
+        tvmazeId:
+          type: integer
+          format: int64
     LinkedEntityResponse:
       type: object
       properties:
@@ -2365,6 +3001,17 @@ components:
       - totalCompletionCount
       - type
       - version
+    PositionRequest:
+      type: object
+      properties:
+        episodeId:
+          type: integer
+          format: int64
+        markPreviousWatched:
+          type: boolean
+        version:
+          type: integer
+          format: int64
     RelatedArticleResponse:
       type: object
       properties:
@@ -2498,6 +3145,15 @@ components:
       required:
       - status
       - version
+    SeenRequest:
+      type: object
+      properties:
+        entityVersion:
+          type: integer
+          format: int64
+        version:
+          type: integer
+          format: int64
     SourceArticleResponse:
       type: object
       properties:
@@ -2541,6 +3197,18 @@ components:
       required:
       - main
       - name
+    TvSummary:
+      type: object
+      properties:
+        alias:
+          type: string
+        newEpisodesAvailable:
+          type: boolean
+        position:
+          type: string
+        tvmazeId:
+          type: integer
+          format: int64
     UpdateArticleRequest:
       type: object
       additionalProperties: false
@@ -2565,6 +3233,14 @@ components:
           minimum: 0
       required:
       - version
+    WatchRequest:
+      type: object
+      properties:
+        version:
+          type: integer
+          format: int64
+        watched:
+          type: boolean
   securitySchemes:
     knowBearer:
       bearerFormat: JWT

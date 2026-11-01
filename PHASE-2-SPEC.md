@@ -15,9 +15,10 @@ Review artifacts: [SQL schema](specs/phase-2/schema.sql), [OpenAPI YAML](specs/p
 5. **Category management:** create personal categories, disable defaults and remove personal categories; see [Phase 5](phase-5.html).
 6. **Automatic Entity & Category Identification:** classify captured pages and identify entity names/types; see [Phase 6](phase-6.html).
 7. **Article Connections & Semantic Similarity:** shared-entity relationships plus asynchronous embeddings and pgvector in Supabase PostgreSQL; see [Phase 7](phase-7.html).
-8. **Authentication & Authorization:** Google identity, accounts, authorization, tokens and sessions.
+8. **TVMaze TV-show enhancement:** show/season/episode metadata and user-selected viewing position; see [Phase 8](phase-8.html).
+9. **Authentication & Authorization:** Google identity, accounts, authorization, tokens and sessions.
 
-These eight phases are visible as separate top-navigation groups on every page. Other enrichment and graph ideas remain outside this numbered delivery scope.
+These nine phases are visible as separate top-navigation groups on every page. Other enrichment and graph ideas remain outside this numbered delivery scope.
 
 ## Navigation and shared presentation
 

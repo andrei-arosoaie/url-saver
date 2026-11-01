@@ -93,6 +93,12 @@ public abstract class BackendIntegrationSupport {
   public static class AuthenticationFixture {
     @Bean
     @org.springframework.context.annotation.Primary
+    TvProviderFixture tvProviderFixture() {
+      return new TvProviderFixture();
+    }
+
+    @Bean
+    @org.springframework.context.annotation.Primary
     EmbeddingProviderFixture embeddingProviderFixture() {
       return new EmbeddingProviderFixture();
     }

@@ -24,6 +24,8 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
 know:
+  tvmaze:
+    scheduling-enabled: false
   connections:
     enabled: true
     scheduling-enabled: false
