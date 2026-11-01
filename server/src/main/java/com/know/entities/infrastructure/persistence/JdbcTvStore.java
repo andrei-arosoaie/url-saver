@@ -269,7 +269,7 @@ public class JdbcTvStore implements TvStore {
     jdbc.update(
         """
         insert into tvmaze_refresh_jobs(show_id,available_at)
-        select distinct s.tvmaze_id,? from tvmaze_shows s join entity_tv_shows m on m.show_id=s.tvmaze_id
+        select distinct s.tvmaze_id,cast(? as timestamptz) from tvmaze_shows s join entity_tv_shows m on m.show_id=s.tvmaze_id
         where s.fetched_at is null or s.fetched_at<? on conflict do nothing
         """,
         at(now),

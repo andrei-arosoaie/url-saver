@@ -106,8 +106,8 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-function fixture() {
-  let data = structuredClone(initial);
+function fixture(start: Details = initial) {
+  let data = structuredClone(start);
   const mutations: { path: string; body: Record<string, unknown> }[] = [];
   const fetcher = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -167,24 +167,26 @@ function fixture() {
         };
       else if (path.endsWith("/seasons"))
         result = {
-          items: [
-            {
-              id: 10,
-              number: 1,
-              name: null,
-              regularEpisodeCount: 3,
-              airedCount: 1,
-              watchedCount: 0,
-            },
-            {
-              id: 20,
-              number: 2,
-              name: null,
-              regularEpisodeCount: 1,
-              airedCount: 0,
-              watchedCount: 0,
-            },
-          ],
+          items: data.metadata.fetchedAt
+            ? [
+                {
+                  id: 10,
+                  number: 1,
+                  name: null,
+                  regularEpisodeCount: 3,
+                  airedCount: 1,
+                  watchedCount: 0,
+                },
+                {
+                  id: 20,
+                  number: 2,
+                  name: null,
+                  regularEpisodeCount: 1,
+                  airedCount: 0,
+                  watchedCount: 0,
+                },
+              ]
+            : [],
           metadataStatus: "READY",
         };
       else if (path.endsWith("/episodes"))
@@ -200,8 +202,64 @@ function fixture() {
   const rendered = render(
     <TvDetails entity={entity} revision={0} onChanged={vi.fn()} />,
   );
-  return { mutations, fetcher, rerender: rendered.rerender };
+  return {
+    mutations,
+    fetcher,
+    rerender: rendered.rerender,
+    loadCatalog: () => {
+      data = structuredClone(initial);
+    },
+  };
 }
+it("enables season and episode selection when a pending catalog loads and preserves unsaved selection across refreshes", async () => {
+  const { rerender, loadCatalog, fetcher } = fixture({
+    ...initial,
+    show: null,
+    metadata: { state: "PENDING", fetchedAt: null, nextAttemptAt: null },
+  });
+  await screen.findByText("Loading seasons and episodes…");
+  expect(
+    (screen.getByRole("group", { name: "Last watched" }) as HTMLFieldSetElement)
+      .disabled,
+  ).toBe(true);
+  expect(
+    within(screen.getByLabelText("Season")).getAllByRole("option"),
+  ).toHaveLength(1);
+  loadCatalog();
+  rerender(<TvDetails entity={entity} revision={1} onChanged={vi.fn()} />);
+  await waitFor(() =>
+    expect(
+      within(screen.getByLabelText("Season")).getAllByRole("option"),
+    ).toHaveLength(3),
+  );
+  expect(
+    (screen.getByRole("group", { name: "Last watched" }) as HTMLFieldSetElement)
+      .disabled,
+  ).toBe(false);
+  fireEvent.change(screen.getByLabelText("Season"), {
+    target: { value: "10" },
+  });
+  await waitFor(() =>
+    expect(
+      within(screen.getByLabelText("Episode")).getAllByRole("option"),
+    ).toHaveLength(2),
+  );
+  fireEvent.change(screen.getByLabelText("Episode"), {
+    target: { value: "11" },
+  });
+  const episodeReads = () =>
+    fetcher.mock.calls.filter((call) =>
+      String(call[0]).endsWith("/seasons/10/episodes"),
+    ).length;
+  const previousReads = episodeReads();
+  rerender(<TvDetails entity={entity} revision={2} onChanged={vi.fn()} />);
+  await waitFor(() => expect(episodeReads()).toBeGreaterThan(previousReads));
+  await waitFor(() =>
+    expect((screen.getByLabelText("Episode") as HTMLSelectElement).value).toBe(
+      "11",
+    ),
+  );
+});
 it("preserves an unsaved alias when parent data refreshes", async () => {
   const { rerender, fetcher } = fixture();
   await screen.findByText("Show · My label");

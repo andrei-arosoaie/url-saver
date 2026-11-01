@@ -117,5 +117,20 @@ position-only changes do not clear it.
 ## Sources
 
 Provider protocol: [TVmaze API](https://www.tvmaze.com/api).
-Public metadata is attributed in the Entities Data sources disclosure under
-[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Public metadata source: [TVmaze](https://www.tvmaze.com/), available under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Provider
+documentation is kept here; the application viewing controls contain no provider
+branding.
+
+## Refresh regression coverage
+
+The worker's stale-catalog discovery query explicitly casts its scheduled time
+parameter to `TIMESTAMPTZ`. PostgreSQL resolves an untyped parameter in a
+`SELECT DISTINCT` projection as text, which otherwise prevents every refresh
+tick from reaching queued jobs. Integration coverage runs the production worker
+entry point from a pending mapping through catalog publication, season/episode
+reads and a position save, then checks fresh-cache reuse and daily refresh.
+
+The UI disables empty position controls while the catalog loads, keeps polling
+through transient failures, and preserves an unsaved episode selection when
+background metadata refreshes. Provider branding is kept out of the app UI.

@@ -362,26 +362,6 @@ export function EntitiesPage({
       <p role="status" className={styles.notice}>
         {notice}
       </p>
-      {route.type === "TV_SHOW" && (
-        <details className={styles.help}>
-          <summary>Data sources</summary>
-          <p>
-            TV information from{" "}
-            <a href="https://www.tvmaze.com/" target="_blank" rel="noreferrer">
-              TVmaze
-            </a>
-            , available under{" "}
-            <a
-              href="https://creativecommons.org/licenses/by-sa/4.0/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              CC BY-SA
-            </a>
-            . Synopses are displayed as plain text.
-          </p>
-        </details>
-      )}
       {manual && (
         <ManualEntity
           type={route.type}

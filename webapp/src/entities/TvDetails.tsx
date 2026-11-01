@@ -110,28 +110,35 @@ export function TvDetails({
     return () => controller.abort();
   }, [path, season, data]);
   useEffect(() => {
-    setPositionEpisodes([]);
-    setEpisode("");
-    if (!positionSeason) return;
+    if (!positionSeason) {
+      setPositionEpisodes([]);
+      setEpisode("");
+      return;
+    }
     const controller = new AbortController();
     void tvRequest<{ items: Episode[] }>(
       `${path}/seasons/${positionSeason}/episodes`,
       controller.signal,
     )
       .then((result) => {
-        if (!controller.signal.aborted)
-          setPositionEpisodes(
-            result.items.filter((e) => e.airAt && e.canMarkWatched),
+        if (!controller.signal.aborted) {
+          const available = result.items.filter(
+            (e) => e.airAt && e.canMarkWatched,
           );
+          setPositionEpisodes(available);
+          setEpisode((value) =>
+            available.some((e) => String(e.id) === value) ? value : "",
+          );
+        }
       })
       .catch((cause) => {
         if (!controller.signal.aborted) setError(cause);
       });
     return () => controller.abort();
   }, [path, positionSeason, data]);
-  // Poll only while metadata is pending; scheduled server refresh owns ongoing synchronization.
+  // Keep waiting through transient refresh failures so the catalog can recover without a reload.
   useEffect(() => {
-    if (data?.metadata.state !== "PENDING") return;
+    if (!data || data.metadata.state === "READY") return;
     const timer = setTimeout(() => setReload((n) => n + 1), 5000);
     return () => clearTimeout(timer);
   }, [data, reload]);
@@ -201,9 +208,11 @@ export function TvDetails({
           </header>
           {data.metadata.state !== "READY" && (
             <p role="status">
-              {data.metadata.state === "PENDING"
-                ? "Show information is loading."
-                : "Showing saved information. Refresh is temporarily unavailable."}
+              {data.metadata.fetchedAt
+                ? "Showing saved information while seasons and episodes refresh."
+                : data.metadata.state === "PENDING"
+                  ? "Loading seasons and episodes…"
+                  : "Seasons and episodes are temporarily unavailable. Retrying…"}
             </p>
           )}
           {data.newEpisodesAvailable && (
@@ -233,15 +242,23 @@ export function TvDetails({
                 : "Not set")}{" "}
             · {data.watchedCount} watched / {data.airedCount} aired
           </p>
-          <fieldset disabled={blocked}>
+          <fieldset disabled={blocked || !seasons.length}>
             <legend>Last watched</legend>
             <label>
               Season
               <select
                 value={positionSeason}
-                onChange={(event) => setPositionSeason(event.target.value)}
+                onChange={(event) => {
+                  setPositionSeason(event.target.value);
+                  setPositionEpisodes([]);
+                  setEpisode("");
+                }}
               >
-                <option value="">Choose season</option>
+                <option value="">
+                  {!seasons.length && !data.metadata.fetchedAt
+                    ? "Loading seasons…"
+                    : "Choose season"}
+                </option>
                 {seasons.map((s) => (
                   <option key={s.id} value={s.id}>
                     Season {s.number}
