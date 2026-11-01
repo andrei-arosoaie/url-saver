@@ -185,6 +185,8 @@ class IdentityIT {
     assertThat(returned).doesNotContainKeys("access_token", "refresh_token");
     var tokens = service.exchange(returned.get("code"), "know-firefox", redirect, verifier);
     assertThat(get("/api/v1/articles", tokens.accessToken()).statusCode()).isEqualTo(200);
+    assertThat(get("/api/v1/identity/profile", tokens.accessToken()).body())
+        .contains("Protocol User", "https://lh3.googleusercontent.com/protocol-photo");
     // A Google login session cookie alone never grants library access.
     assertThat(get("/api/v1/articles", null).statusCode()).isEqualTo(401);
   }
@@ -318,6 +320,94 @@ class IdentityIT {
             service.resolveGoogle(
                 "https://accounts.google.com", "new-subject", "owner@example.test", true))
         .isNotEqualTo(LEGACY);
+  }
+
+  @Test
+  void profileUsesVerifiedGoogleClaimsAndRemovalIsAccountScopedAndSurvivesLaterSignIns()
+      throws Exception {
+    var account =
+        service.resolveGoogle(
+            "https://accounts.google.com",
+            "profile-owner",
+            "profile@example.test",
+            true,
+            "Andrei Example",
+            "https://lh3.googleusercontent.com/photo");
+    var tokens = signInProfile(account);
+    var profile = get("/api/v1/identity/profile", tokens.accessToken());
+    assertThat(profile.statusCode()).isEqualTo(200);
+    assertThat(profile.body())
+        .contains("Andrei Example", "https://lh3.googleusercontent.com/photo");
+    assertThat(profile.headers().firstValue("Cache-Control").orElse("")).contains("no-store");
+    var other =
+        service.resolveGoogle(
+            "https://accounts.google.com",
+            "profile-other",
+            "other@example.test",
+            true,
+            "Other User",
+            "https://lh3.googleusercontent.com/other");
+    var remove =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/api/v1/identity/profile/picture"))
+            .header("Authorization", "Bearer " + tokens.accessToken())
+            .DELETE()
+            .build();
+    var removed = http.send(remove, HttpResponse.BodyHandlers.ofString());
+    assertThat(removed.statusCode()).isEqualTo(200);
+    assertThat(removed.body()).contains("\"pictureUrl\":null", "\"pictureRemoved\":true");
+    var restore =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/api/v1/identity/profile/picture"))
+            .header("Authorization", "Bearer " + tokens.accessToken())
+            .PUT(HttpRequest.BodyPublishers.noBody())
+            .build();
+    var restored = http.send(restore, HttpResponse.BodyHandlers.ofString());
+    assertThat(restored.statusCode()).isEqualTo(200);
+    assertThat(restored.body())
+        .contains("https://lh3.googleusercontent.com/photo", "\"pictureRemoved\":false");
+    service.removePicture(account);
+    service.resolveGoogle(
+        "https://accounts.google.com",
+        "profile-owner",
+        "profile@example.test",
+        true,
+        "Andrei Renamed",
+        "https://lh3.googleusercontent.com/new-photo");
+    assertThat(service.profile(account))
+        .isEqualTo(new IdentityService.Profile("Andrei Renamed", null, true));
+    var restoredLatest = http.send(restore, HttpResponse.BodyHandlers.ofString());
+    assertThat(restoredLatest.statusCode()).isEqualTo(200);
+    assertThat(restoredLatest.body())
+        .contains("https://lh3.googleusercontent.com/new-photo", "\"pictureRemoved\":false");
+    assertThat(service.profile(other).pictureUrl())
+        .isEqualTo("https://lh3.googleusercontent.com/other");
+    assertThat(get("/api/v1/identity/profile", null).statusCode()).isEqualTo(401);
+    service.resolveGoogle(
+        "https://accounts.google.com",
+        "profile-url",
+        "url@example.test",
+        true,
+        "Unsafe URL",
+        "https://attacker.test/photo");
+    var unsafe =
+        service.resolveGoogle(
+            "https://accounts.google.com",
+            "profile-url",
+            "url@example.test",
+            true,
+            "Unsafe URL",
+            "javascript:alert(1)");
+    assertThat(service.profile(unsafe).pictureUrl()).isNull();
+  }
+
+  private IdentityService.Tokens signInProfile(UUID account) {
+    var verifier = IdentityService.randomToken();
+    return service.exchange(
+        service.authorize(account, "know-firefox", redirect, IdentityService.hash(verifier)),
+        "know-firefox",
+        redirect,
+        verifier);
   }
 
   @Test

@@ -10,7 +10,16 @@ vi.mock("./auth", () => ({
   beginSignIn: auth.signIn,
   signOut: auth.signOut,
 }));
-vi.mock("./App", () => ({ App: () => <div>Private library</div> }));
+vi.mock("./App", () => ({
+  App: ({ accountControl }: { accountControl?: import("react").ReactNode }) => (
+    <div>Private library{accountControl}</div>
+  ),
+}));
+vi.mock("./profile/ProfileMenu", () => ({
+  ProfileMenu: ({ onSignOut }: { onSignOut: () => Promise<void> }) => (
+    <button onClick={() => void onSignOut()}>Sign out</button>
+  ),
+}));
 beforeEach(() => {
   vi.resetModules();
   auth.initialize.mockReset();

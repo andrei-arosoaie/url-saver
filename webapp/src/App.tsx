@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   libraryApi,
   type Article,
@@ -48,10 +49,12 @@ export function App({
   api = libraryApi,
   entities = entityApi,
   categoryManagement = categoryApi,
+  accountControl,
 }: {
   api?: LibraryApi;
   entities?: EntityApi;
   categoryManagement?: CategoryApi;
+  accountControl?: ReactNode;
 }) {
   const theme = useTheme();
   const [hash, setHash] = useState(() => location.hash);
@@ -272,17 +275,13 @@ export function App({
             />
           </label>
         )}
-        <ThemePicker
-          preference={theme.preference}
-          onChange={theme.setPreference}
-        />
-        <span
-          className={styles.avatar}
-          title="Shared temporary account"
-          aria-label="Shared library"
-        >
-          S
-        </span>
+        <div className={styles.headerActions}>
+          <ThemePicker
+            preference={theme.preference}
+            onChange={theme.setPreference}
+          />
+          {accountControl}
+        </div>
       </header>
       <div className={styles.shell}>
         <nav className={styles.primaryNav} aria-label="Main navigation">

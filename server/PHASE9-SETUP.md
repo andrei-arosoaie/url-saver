@@ -128,6 +128,15 @@ The webpage shows Google sign-in before loading the library. The Firefox toolbar
 provides sign-in and sign-out. A save that needs authentication shows a sign-in action;
 signing in does not save the article. Return to the page and click Save explicitly.
 
+The webpage header's account menu shows the Google name and photo captured at sign-in,
+and provides sign-out and photo removal. After removal, the menu offers Restore Google photo
+instead of Remove profile photo. The latest verified Google photo reference is retained while
+hidden, so restoration is immediate. The choice is saved across devices and future sign-ins.
+Existing sessions created before profile
+support show a generic avatar until the next Google sign-in. Profile reads and removal use
+the authenticated `/api/v1/identity/profile` and `/api/v1/identity/profile/picture` endpoints;
+DELETE hides the photo and PUT restores it for the current account only.
+
 For local development, use `http://localhost:5173` (matching the configured web Origin).
 Vite proxies `/api`, `/oauth2`, and `/login` to port 8080. Do not substitute `127.0.0.1`
 without updating the registered web origin and callback consistently.
