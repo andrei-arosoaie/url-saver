@@ -102,6 +102,14 @@ export default defineContentScript({
           pageUrl={currentUrl}
           extract={() => capture(document, location.href)}
           send={send}
+          onSignIn={async () => {
+            const reply = await browser.runtime.sendMessage({
+              type: "know:identity",
+              action: "signIn",
+            });
+            if (!reply?.ok)
+              throw new Error(reply?.message || "Sign-in failed.");
+          }}
         />,
       );
     render();

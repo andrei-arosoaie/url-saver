@@ -22,6 +22,7 @@ export type SaveReply = {
   jobId?: string;
 };
 export type SaveJob = {
+  authSession?: string;
   id: string;
   url: string;
   capture?: Capture;

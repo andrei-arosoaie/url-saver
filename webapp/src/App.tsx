@@ -227,16 +227,24 @@ export function App({
         Skip to content
       </a>
       <header className={styles.header}>
-        <a
-          href="#"
-          className={styles.brand}
-          onClick={(event) => {
-            event.preventDefault();
-            navigate(null);
-          }}
-        >
-          <Brand />
-        </a>
+        <div className={styles.identity}>
+          <a
+            href="#"
+            className={styles.brand}
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(null);
+            }}
+          >
+            <Brand />
+          </a>
+          <span
+            className={styles.version}
+            aria-label={`Application version ${__APP_BUILD__.version}, revision ${__APP_BUILD__.revision}`}
+          >
+            v{__APP_BUILD__.version} · {__APP_BUILD__.revision}
+          </span>
+        </div>
         {!isCategories && (
           <label className={styles.search}>
             <span className={styles.srOnly}>

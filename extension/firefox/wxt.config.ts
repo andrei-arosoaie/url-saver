@@ -4,7 +4,7 @@ export default defineConfig({
   manifest: {
     name: "Know",
     description: "Save the current article to Know.",
-    permissions: ["storage", "unlimitedStorage", "tabs", "alarms"],
+    permissions: ["storage", "unlimitedStorage", "tabs", "alarms", "identity"],
     host_permissions: ["<all_urls>"],
     incognito: "not_allowed",
     browser_specific_settings: {

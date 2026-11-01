@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import { ArticleApi } from "../src/api";
+import { ArticleApi, ApiFailure } from "../src/api";
 import { articleHandler } from "../src/messages";
 import { SaveQueue, queuePrefix, type SaveJob } from "../src/saveQueue";
 import {
@@ -10,70 +10,43 @@ import {
 import { captureViewport } from "../src/viewportCapture";
 import { CaptureFailure } from "../src/captureFailure";
 import { requireWebsiteCaptureAccess } from "../src/captureAccess";
+import { sessionQueueStorage } from "../src/sessionQueueStorage";
+import {
+  accessToken,
+  apiOrigin,
+  currentSession,
+  signIn,
+  signOut,
+} from "../src/auth";
 export default defineBackground(() => {
-  const api = new ArticleApi(
-    import.meta.env.VITE_API_ORIGIN || "https://url-saver-server.onrender.com",
-    async () => {
-      const { accessToken } = await browser.storage.session.get("accessToken");
-      return typeof accessToken === "string" ? accessToken : undefined;
-    },
-  );
-  const alarms = {
-    async schedule(key: string, when: number) {
-      await browser.alarms.create(key, { when });
-    },
-    async clear(key: string) {
-      await browser.alarms.clear(key);
-    },
-  };
-  const screenshots = new ScreenshotQueue(
-    api,
-    {
-      async get(key) {
-        return (await browser.storage.local.get(key))[key] as
-          ScreenshotJob | undefined;
+  function createServices() {
+    const binding = currentSession();
+    const api = new ArticleApi(apiOrigin, async () =>
+      accessToken(await binding),
+    );
+    const alarms = {
+      async schedule(key: string, when: number) {
+        await browser.alarms.create(key, { when });
       },
-      async set(key, job) {
-        await browser.storage.local.set({ [key]: job });
+      async clear(key: string) {
+        await browser.alarms.clear(key);
       },
-      async remove(key) {
-        await browser.storage.local.remove(key);
-      },
-      async all() {
-        return Object.fromEntries(
-          Object.entries(await browser.storage.local.get(null)).filter(
-            ([key]) => key.startsWith(screenshotPrefix),
-          ),
-        ) as Record<string, ScreenshotJob>;
-      },
-    },
-    alarms,
-  );
-  const queue = new SaveQueue(
-    api,
-    {
-      async get(key) {
-        return (await browser.storage.local.get(key))[key] as
-          SaveJob | undefined;
-      },
-      async set(key, job) {
-        await browser.storage.local.set({ [key]: job });
-      },
-      async remove(key) {
-        await browser.storage.local.remove(key);
-      },
-      async all() {
-        return Object.fromEntries(
-          Object.entries(await browser.storage.local.get(null)).filter(
-            ([key]) => key.startsWith(queuePrefix),
-          ),
-        ) as Record<string, SaveJob>;
-      },
-    },
-    alarms,
-    Date.now,
-    screenshots,
-  );
+    };
+    const screenshots = new ScreenshotQueue(
+      api,
+      sessionQueueStorage<ScreenshotJob>(screenshotPrefix, binding),
+      alarms,
+    );
+    const queue = new SaveQueue(
+      api,
+      sessionQueueStorage<SaveJob>(queuePrefix, binding),
+      alarms,
+      Date.now,
+      screenshots,
+    );
+    return { api, queue, screenshots, binding };
+  }
+  let services = createServices();
   let generation = 0;
   browser.tabs.onActivated.addListener(() => {
     generation++;
@@ -152,8 +125,8 @@ export default defineBackground(() => {
   browser.alarms.onAlarm.addListener((alarm) => {
     void (
       alarm.name.startsWith(screenshotPrefix)
-        ? screenshots.run(alarm.name)
-        : queue.run(alarm.name)
+        ? services.screenshots.run(alarm.name)
+        : services.queue.run(alarm.name)
     ).catch(() => {
       // Never log captured content, credentials or raw transport errors.
       console.error(
@@ -165,7 +138,68 @@ export default defineBackground(() => {
   // after a browser restart even though alarms themselves do not survive it.
   browser.runtime.onStartup.addListener(() => {});
   browser.runtime.onInstalled.addListener(() => {});
-  browser.runtime.onMessage.addListener(
-    articleHandler(api, (id) => browser.tabs.get(id), queue, viewport),
-  );
+  browser.runtime.onMessage.addListener(async (message: unknown, sender) => {
+    if (
+      message &&
+      typeof message === "object" &&
+      "type" in message &&
+      message.type === "know:article"
+    ) {
+      const current = services;
+      if ("action" in message && message.action === "save") {
+        try {
+          await accessToken(await current.binding);
+        } catch (error) {
+          return {
+            ok: false,
+            status: error instanceof ApiFailure ? error.status : 0,
+            message:
+              error instanceof Error
+                ? error.message
+                : "Could not connect to sign-in. Please try again.",
+          };
+        }
+      }
+      return articleHandler(
+        current.api,
+        (id) => browser.tabs.get(id),
+        current.queue,
+        viewport,
+      )(message, sender);
+    }
+    if (
+      !message ||
+      typeof message !== "object" ||
+      !("type" in message) ||
+      message.type !== "know:identity"
+    )
+      return;
+    if (sender.id !== browser.runtime.id || sender.tab?.incognito) return;
+    const action = "action" in message ? message.action : undefined;
+    // Content scripts may initiate sign-in only from the active top-level tab.
+    if (sender.tab) {
+      if (
+        sender.frameId !== 0 ||
+        !sender.tab.id ||
+        !(await browser.tabs.get(sender.tab.id)).active ||
+        action !== "signIn"
+      )
+        return;
+    } else if (!sender.url?.startsWith(browser.runtime.getURL(""))) return;
+    try {
+      if (action === "status") return { signedIn: !!(await currentSession()) };
+      if (action === "signIn") await signIn();
+      else if (action === "signOut") await signOut();
+      services = createServices();
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Sign-in failed. Please try again.",
+      };
+    }
+  });
 });

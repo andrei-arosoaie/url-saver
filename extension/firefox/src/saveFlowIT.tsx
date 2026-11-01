@@ -43,7 +43,11 @@ function fixture(transport: typeof fetch) {
       return structuredClone(records);
     },
   };
-  const api = new ArticleApi(origin!, async () => undefined, transport);
+  const api = new ArticleApi(
+    origin!,
+    async () => import.meta.env.KNOW_IT_ACCESS_TOKEN,
+    transport,
+  );
   const alarms = { async schedule() {}, async clear() {} };
   const build = () => new SaveQueue(api, storage, alarms, () => now);
   let queue = build();

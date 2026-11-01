@@ -54,8 +54,8 @@ docker build --platform linux/amd64 -t know-server:local .
 sh scripts/verify-image.sh know-server:local
 ```
 
-The smoke check uses disposable containers and mounted test-only YAML. It checks the non-root JRE runtime, required secrets, a custom port, real migrations, liveness, temporary-account saves and persisted content and disabled documentation endpoints. Its 512 MiB / 1 CPU limit is a local smoke-test environment, not a Render startup benchmark.
+The smoke check uses disposable containers, generated fixture signing keys, and mounted test-only YAML. It checks the non-root JRE runtime, required secrets, a custom port, real migrations, liveness, anonymous API denial, PKCE exchange, authenticated saves, persisted content, and disabled documentation endpoints. Its 512 MiB / 1 CPU limit is a local smoke-test environment, not a Render startup benchmark.
 
-The Firefox capture client is implemented. The current iteration enables know.temporary-account.enabled: true: unauthenticated requests share account 00000000-0000-4000-8000-000000000001, created automatically. Disable that property when authentication is implemented. Deploy the rebuilt image before using the rebuilt extension against Render. Real sign-in and the webpage remain upcoming checkpoints. Local liveness checks do not establish the under-five-second save-ready target.
+The webpage and Firefox extension now require sign-in. Follow [PHASE9-SETUP.md](PHASE9-SETUP.md) to mount the auth configuration and separate production signing keys before deploying this image. The temporary shared account is disabled by default; its existing data is claimed only by the configured verified Google owner. Deploy the rebuilt image together with the rebuilt clients. Local liveness checks do not establish the under-five-second save-ready target.
 
 References: [Render prebuilt images](https://render.com/docs/deploying-an-image), [secret files](https://render.com/docs/configure-environment-variables), [port binding](https://render.com/docs/web-services#port-binding).

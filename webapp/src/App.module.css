@@ -25,6 +25,20 @@
   color: var(--ink);
   text-decoration: none;
 }
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.version {
+  padding-left: 41px;
+  color: var(--muted);
+  font:
+    10px/1.4 ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
 .appTab {
   color: var(--accent);
   font-weight: 650;
@@ -349,7 +363,7 @@
     max-width: none;
     margin: 0;
   }
-  .header > div {
+  .header > div:not(.identity) {
     margin-left: auto;
   }
   .avatar {

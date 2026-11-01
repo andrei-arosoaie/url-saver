@@ -13,7 +13,11 @@ Spring Boot 4.1.2, Temurin Java 27, Gradle 9.8.2; PostgreSQL 17.11 Alpine for de
 - Sanitized HTML only: preserve article prose, remove executable markup and images. Configurable UTF-8 content and Unicode title limits; reject without truncation.
 - Flyway schema, per-account exact-URL SHA-256 uniqueness, database hash verification, transactional concurrency protection and version locking.
 
-All four article endpoints and the Firefox capture client are implemented. The responsive webpage is implemented in ../webapp and served from this same application. Real authentication comes later. See ../extension/firefox/README.md for client checks and current limitations. This functionality-only iteration enables one shared temporary account via know.temporary-account.enabled in application.yml. Unauthenticated requests use account 00000000-0000-4000-8000-000000000001; it is created automatically. Setting enabled=false restores the authentication requirement. An authenticated UUID principal still takes precedence.
+The article endpoints, Firefox capture client, and responsive webpage are implemented.
+Phase 9 adds Google OIDC sign-in, PKCE, signed access tokens, rotating refresh tokens,
+and per-session revocation. Anonymous API requests return 401. Required configuration,
+verified legacy-account ownership, client transport, and deployment steps are documented
+in [PHASE9-SETUP.md](PHASE9-SETUP.md). Actual credentials and PEM keys are never committed.
 
 ## Entities backend
 

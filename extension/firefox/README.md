@@ -1,5 +1,11 @@
 # Know Firefox extension
 
+Google sign-in and sign-out are available from the toolbar popup. A save requiring
+authentication offers sign-in; return and click Save explicitly afterward. PKCE and
+token handling run in the background; content scripts never receive credentials.
+Pending save/screenshot jobs bind to one sign-in session and cannot cross accounts.
+See [Phase 9 configuration](../../server/PHASE9-SETUP.md).
+
 ## Android development package
 
 Run `build-development.cmd` from this folder, or `npm run package:dev`.
@@ -35,9 +41,11 @@ Default server: `https://url-saver-server.onrender.com`. To target the local ser
 - Pending URL/title/article HTML, retry count and deadline are stored in Firefox local extension storage so retries survive restarts and closed tabs. Background alarms resume overdue work once, without catch-up bursts. Reopening the exact source URL shows countdown/progress or its final outcome. Concurrent clicks/tabs share one pending job for that exact URL.
 - Captured text is cleared on confirmed success or final failure. Duplicate captures remain only until Update existing or Cancel; no automatic overwrite. Terminal feedback contains no article body. Storage errors never cause an unjournaled request.
 
-## Temporary account
+## Authentication
 
-Saving works without sign-in in this iteration. The server assigns unauthenticated requests to one shared temporary account (UUID 00000000-0000-4000-8000-000000000001). All installations share its articles. The temporary path is controlled by know.temporary-account.enabled in application.yml; disable it when real authentication is implemented. No account ID is trusted from the extension. If an access token is available later, the extension sends it normally.
+Saving requires a Know access token. Google sign-in uses PKCE and a verified callback
+state; refresh tokens rotate through the shared backend endpoint. Background API calls
+omit cookies and send the signed bearer token. No account ID is trusted from the extension.
 
 ## Review in Firefox
 
@@ -45,9 +53,19 @@ Desktop: open `about:debugging#/runtime/this-firefox`, choose **Load Temporary A
 
 Android: the build declares Android compatibility and Mozilla's required browsing-activity/website-content consent. Actual Android installation and device testing remain outstanding; unsigned desktop temporary loading does not establish Android compatibility.
 
-Automated checks cover extraction, viewport races, API contracts, message validation, persistent retry lifecycles and React feedback. Five end-to-end integration tests connect the React control, background handlers and queues to a disposable Spring Boot/PostgreSQL server and an ImageKit HTTP fixture through the official SDK. They verify article/image restart recovery, lost responses, native dimensions, private JPEG download, explicit screenshot replacement, exhaustion and validation. These tests simulate browser storage/alarms and restarts; actual Firefox desktop/Android restart verification and authentication remain outstanding.
+Automated checks cover extraction, viewport races, API contracts, message validation,
+persistent retry lifecycles, authentication state/rotation, queue session isolation and
+React feedback. Five integration tests connect the control, background handlers and queues
+to a disposable authenticated Spring Boot/PostgreSQL server and an ImageKit HTTP fixture.
+They verify article/image restart recovery, lost responses, native dimensions, private JPEG
+download, explicit replacement, exhaustion and validation. These tests simulate browser
+storage/alarms and restarts. Live Google sign-in and installed Firefox desktop/Android
+verification remain manual checks.
 
-Mozilla's validator reports four `innerHTML` warnings inside bundled React/Readability. Our control never renders captured HTML; Readability operates on a detached clone. These dependency warnings require review during signing and are not suppressed.
+Mozilla's validator reports six `innerHTML` warnings inside bundled React/Readability,
+including the new popup's React bundle. Our control never renders captured HTML;
+Readability operates on a detached clone. These dependency warnings require review
+during signing and are not suppressed.
 
 ## Integration tests
 

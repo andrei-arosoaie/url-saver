@@ -52,7 +52,7 @@ Phases 1–5 are deployed to Render (image 1b1046a059d67782f5379732360e7d28307a3
 
 - Renaming an article or entity preserves every existing association. Links use stable IDs and change only through explicit link/unlink actions.
 - Timeline excerpts await a product decision; the current list API supplies no excerpt.
-- Real authentication and Firefox desktop/Android device verification remain outstanding.
+- Phase 9 authentication is implemented; live Google/Render sign-in and Firefox desktop/Android device verification remain outstanding. See [PHASE9-SETUP.md](PHASE9-SETUP.md).
 - The under-five-second save-ready startup target remains unmet.
 
 ## Phase 4 decisions

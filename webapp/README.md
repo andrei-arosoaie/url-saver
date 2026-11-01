@@ -17,6 +17,17 @@ For development, npm run dev proxies /api to localhost:8080. Set KNOW_DEV_API_OR
 
 ## Behavior
 
+Google sign-in uses the backend's PKCE authorization flow. Access tokens stay in memory;
+refresh tokens stay in HttpOnly cookies and rotate through the shared token endpoint with
+Origin/CSRF checks. Sign-out revokes the current session across tabs. Local development
+uses `http://localhost:5173`; see [Phase 9 configuration](../server/PHASE9-SETUP.md).
+
+The header displays `v0.<Git commit count>.0` and the short commit ID. Every committed
+change advances at least the minor version; no manual package-version bump is needed.
+Tracked local edits preview the next minor version with a `-dev` suffix. Builds require
+full Git history (`fetch-depth: 0` in CI) and embed the same version/revision in HTML
+metadata so deployments can be checked without signing in.
+
 - Timeline: newest-first cursor pagination, category/search filters, explicit versioned metadata edits, reader and manual retries.
 - Entities: exactly one type, Table/Board/By year, manual creation, editable details, type-specific statuses, completion history and linked source pages.
 - Completing a status records server time automatically. Past completions can be recorded, corrected with microsecond UTC precision or removed without rewriting current status.
@@ -28,7 +39,8 @@ For development, npm run dev proxies /api to localhost:8080. Set KNOW_DEV_API_OR
 - Version conflicts require explicit reload; writes never automatically retry. Failed or stale requests do not display another record as the requested one.
 - System/light/dark themes; only the theme preference is stored locally.
 
-The approved temporary account is shared with the extension. Authentication and entity deletion remain deferred; permanent article deletion and individual completion correction/removal work.
+Library data is scoped to the authenticated account. Entity deletion remains deferred;
+permanent article deletion and individual completion correction/removal work.
 
 ## Firefox end-to-end verification
 

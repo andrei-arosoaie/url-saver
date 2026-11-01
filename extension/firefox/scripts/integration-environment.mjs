@@ -13,6 +13,19 @@ export default {
     };
     const environment = await builtinEnvironments.jsdom.setup(global, options);
     Object.assign(global, native);
+    const nativeFetch = global.fetch.bind(global);
+    global.fetch = (input, init) => {
+      const url = typeof input === "string" ? input : (input.href ?? input.url);
+      if (url?.startsWith(process.env.KNOW_IT_API_ORIGIN + "/api/")) {
+        const headers = new global.Headers(init?.headers);
+        headers.set(
+          "Authorization",
+          `Bearer ${process.env.KNOW_IT_ACCESS_TOKEN}`,
+        );
+        return nativeFetch(input, { ...init, headers });
+      }
+      return nativeFetch(input, init);
+    };
     return environment;
   },
 };

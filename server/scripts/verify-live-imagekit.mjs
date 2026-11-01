@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 const origin = process.env.KNOW_VERIFY_ORIGIN;
 assert.match(origin ?? "", /^http:\/\/127\.0\.0\.1:\d+$/);
-const call = (path, init) => fetch(origin + path, { ...init, signal: AbortSignal.timeout(60000) });
+const call = (path, init) => fetch(origin + path, { ...init, headers: { ...init?.headers, Authorization: `Bearer ${process.env.KNOW_IT_ACCESS_TOKEN}` }, signal: AbortSignal.timeout(60000) });
 const created = await call("/api/v1/articles", {
   method: "POST", headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ url: "https://example.test/imagekit-live-smoke", title: "Disposable ImageKit verification", content: "<p>Private screenshot verification.</p>" }),
