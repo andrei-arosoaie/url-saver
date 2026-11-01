@@ -23,6 +23,7 @@ class TvFlowsIT extends BackendIntegrationSupport {
   private final Environment environment;
   private final TvStore store;
   private final TvProviderFixture provider;
+  private final TvPolicy policy;
   private final HttpClient http = HttpClient.newHttpClient();
   private final JsonMapper json = JsonMapper.builder().build();
   private UUID owner, other;
@@ -311,6 +312,49 @@ class TvFlowsIT extends BackendIntegrationSupport {
         "/entities/" + e.path("id").asString(),
         owner,
         Map.of("version", 0, "title", "Edited"));
+  }
+
+  @Test
+  void refreshWorkerLoadsQueuedCatalogAndMakesSeasonsAndEpisodesSelectable() throws Exception {
+    var created = request(201, "POST", "/tvmaze/entities", owner, Map.of("tvmazeId", 1));
+    var id = created.path("id").asString();
+    var path = "/entities/" + id + "/tv-show";
+    assertThat(request(200, "GET", path, owner, null).path("metadata").path("state").asString())
+        .isEqualTo("PENDING");
+    var worker =
+        new com.know.entities.infrastructure.config.TvWorker(
+            store, provider, policy, entityTestClock);
+    worker.poll();
+    var loaded = request(200, "GET", path, owner, null);
+    assertThat(loaded.path("metadata").path("state").asString()).isEqualTo("READY");
+    var seasons = request(200, "GET", path + "/seasons", owner, null).path("items");
+    assertThat(seasons.size()).isEqualTo(1);
+    var episodes =
+        request(
+                200,
+                "GET",
+                path + "/seasons/" + seasons.get(0).path("id").asLong() + "/episodes",
+                owner,
+                null)
+            .path("items");
+    assertThat(episodes.size()).isEqualTo(4);
+    assertThat(episodes.get(0).path("canMarkWatched").asBoolean()).isTrue();
+    request(
+        200,
+        "PATCH",
+        path + "/position",
+        owner,
+        Map.of(
+            "version",
+            loaded.path("version").asLong(),
+            "episodeId",
+            episodes.get(0).path("id").asLong()));
+    var fetched = store.metadata(1).fetchedAt();
+    worker.poll();
+    assertThat(store.metadata(1).fetchedAt()).isEqualTo(fetched);
+    entityTestClock.set(NOW.plus(policy.catalogTtl()).plusSeconds(1));
+    worker.poll();
+    assertThat(store.metadata(1).fetchedAt()).isEqualTo(entityTestClock.instant());
   }
 
   @Test
