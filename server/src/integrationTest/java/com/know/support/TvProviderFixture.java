@@ -25,7 +25,18 @@ public class TvProviderFixture implements TvProvider {
   public Show show(long id) {
     if (id <= 0)
       throw new com.know.shared.application.RequestFailure(400, "INVALID_REQUEST", "Invalid ID");
-    return new Show(id, "Same title", null, "Synopsis", List.of("Drama"), "Running", 45, 8.0, null);
+    return new Show(
+        id,
+        "Same title",
+        null,
+        "Synopsis",
+        List.of("Drama"),
+        "Running",
+        45,
+        8.0,
+        null,
+        null,
+        2000 + (int) id);
   }
 
   public Catalog catalog(long id) {

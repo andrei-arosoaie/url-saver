@@ -129,8 +129,32 @@ parameter to `TIMESTAMPTZ`. PostgreSQL resolves an untyped parameter in a
 `SELECT DISTINCT` projection as text, which otherwise prevents every refresh
 tick from reaching queued jobs. Integration coverage runs the production worker
 entry point from a pending mapping through catalog publication, season/episode
-reads and a position save, then checks fresh-cache reuse and daily refresh.
+reads and a position save, then checks fresh-cache reuse and scheduled refresh.
 
 The UI disables empty position controls while the catalog loads, keeps polling
 through transient failures, and preserves an unsaved episode selection when
 background metadata refreshes. Provider branding is kept out of the app UI.
+
+## TV list progress and release updates
+
+TV tables show Title (including premiere year when available), Status, Created,
+and Progress. Progress contains separate season/episode badges, the episode number
+within its season, NEW when applicable, and a bar with watched/released counts,
+percentage, and remaining episodes. Completion dates remain in completion history.
+The same viewing bar appears in TV details and board/year summaries.
+
+Only currently present regular episodes whose confirmed air timestamp has passed
+count toward the bar. Watched future or unknown-date episodes do not inflate it.
+100% means every currently released regular episode is checked, independently of
+the saved position or Seen status. Zero released episodes never displays 100%.
+List counts are loaded in one account-scoped batch query using the server clock;
+crossing an episode's air time changes the total on the next read, without waiting
+for a catalog refresh. TV lists/details refresh while visible every minute and
+lists refresh on focus; loaded pagination is retained. Catalog discovery defaults
+to hourly refresh with the existing provider quota, lease and retry safeguards.
+
+The Last watched picker excludes watched episodes and seasons without unwatched
+released episodes. The full episode browser retains watched entries for explicit
+review and correction. Completion-history editing and past completion entry use
+a native date/time picker labeled UTC. An optional exact timestamp field retains
+microsecond precision; opening or saving an unchanged event does not round it.

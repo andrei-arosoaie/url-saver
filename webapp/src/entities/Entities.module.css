@@ -489,11 +489,121 @@ html[data-theme="dark"] .done {
   }
 }
 .tvCompact {
-  display: inline-flex;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11px;
+}
+.positionBadges {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin: 4px 8px;
-  font-size: 12px;
+}
+.seasonBadge,
+.episodeBadge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font:
+    650 11px ui-monospace,
+    monospace;
+}
+.seasonBadge {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.episodeBadge {
+  background: var(--soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.premiereYear {
+  color: var(--muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.viewingProgress {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.progressNumbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.progressNumbers strong {
+  color: var(--ink);
+  white-space: nowrap;
+}
+.viewingProgress progress {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  height: 7px;
+  background: var(--line);
+  accent-color: var(--accent);
+}
+.viewingProgress progress::-webkit-progress-bar {
+  background: var(--line);
+  border-radius: 10px;
+}
+.viewingProgress progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 10px;
+}
+.viewingProgress progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 10px;
+}
+.caughtUp progress {
+  accent-color: #32985f;
+}
+.caughtUp progress::-webkit-progress-value {
+  background: #32985f;
+}
+.caughtUp progress::-moz-progress-bar {
+  background: #32985f;
+}
+.progressNote {
+  color: var(--muted);
+  font-size: 10px;
+}
+.tvTable th:last-child {
+  width: 36%;
+}
+.tvTable .titleLink {
+  flex-wrap: wrap;
+}
+:global([data-theme="dark"]) .newBadge {
+  background: #173b30;
+  color: #79e3b3;
+  border-color: #32634e;
+}
+@media (max-width: 760px) {
+  .tvTable th:last-child {
+    width: 48%;
+  }
+  .progressNumbers {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .progressNote {
+    font-size: 9px;
+  }
+  .seasonBadge,
+  .episodeBadge {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
 }
 .newBadge {
   position: relative;

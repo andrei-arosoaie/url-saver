@@ -27,7 +27,33 @@ public final class TvModels {
       Integer averageRuntime,
       Double tvmazeRating,
       String imdbUrl,
-      Episode nextEpisode) {
+      Episode nextEpisode,
+      Integer premiereYear) {
+    public Show(
+        long tvmazeId,
+        String name,
+        String posterUrl,
+        String summary,
+        List<String> genres,
+        String providerStatus,
+        Integer averageRuntime,
+        Double tvmazeRating,
+        String imdbUrl,
+        Episode nextEpisode) {
+      this(
+          tvmazeId,
+          name,
+          posterUrl,
+          summary,
+          genres,
+          providerStatus,
+          averageRuntime,
+          tvmazeRating,
+          imdbUrl,
+          nextEpisode,
+          null);
+    }
+
     public Show(
         long tvmazeId,
         String name,
@@ -48,6 +74,7 @@ public final class TvModels {
           averageRuntime,
           tvmazeRating,
           imdbUrl,
+          null,
           null);
     }
   }

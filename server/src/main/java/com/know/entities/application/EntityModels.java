@@ -45,7 +45,21 @@ public final class EntityModels {
       TvSummary tvShow) {}
 
   public record TvSummary(
-      long tvmazeId, String alias, String position, boolean newEpisodesAvailable) {}
+      long tvmazeId,
+      String alias,
+      String position,
+      boolean newEpisodesAvailable,
+      Integer premiereYear,
+      Integer season,
+      Integer episode,
+      long seasonEpisodeCount,
+      long watchedCount,
+      long airedCount,
+      boolean catalogReady) {
+    public TvSummary(long tvmazeId, String alias, String position, boolean newEpisodesAvailable) {
+      this(tvmazeId, alias, position, newEpisodesAvailable, null, null, null, 0, 0, 0, false);
+    }
+  }
 
   public record Completion(
       UUID id, UUID entityId, Instant completedAt, Instant createdAt, long version) {}

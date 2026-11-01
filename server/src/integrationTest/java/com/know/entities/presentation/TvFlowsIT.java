@@ -186,6 +186,74 @@ class TvFlowsIT extends BackendIntegrationSupport {
   }
 
   @Test
+  void listingProgressCountsOnlyReleasedRegularEpisodesAndUpdatesAtAirTime() throws Exception {
+    String id =
+        request(201, "POST", "/tvmaze/entities", owner, Map.of("tvmazeId", 1))
+            .path("id")
+            .asString();
+    publish(1);
+    var summary =
+        request(200, "GET", "/entities?type=TV_SHOW", owner, null)
+            .path("items")
+            .get(0)
+            .path("tvShow");
+    assertThat(summary.path("catalogReady").asBoolean()).isTrue();
+    assertThat(summary.path("premiereYear").asInt()).isEqualTo(2001);
+    assertThat(summary.path("airedCount").asLong()).isEqualTo(2);
+    assertThat(summary.path("watchedCount").asLong()).isZero();
+    String path = "/entities/" + id + "/tv-show";
+    var detail = request(200, "GET", path, owner, null);
+    detail =
+        request(
+            200,
+            "PATCH",
+            path + "/position",
+            owner,
+            Map.of(
+                "version",
+                detail.path("version").asLong(),
+                "episodeId",
+                1002,
+                "markPreviousWatched",
+                true));
+    detail =
+        request(
+            200,
+            "PUT",
+            path + "/episodes/1003/watched",
+            owner,
+            Map.of("version", detail.path("version").asLong(), "watched", true));
+    assertThat(detail.path("watchedCount").asLong()).isEqualTo(2);
+    detail = request(200, "POST", path + "/mark-seen", owner, versions(detail));
+    summary =
+        request(200, "GET", "/entities?type=TV_SHOW", owner, null)
+            .path("items")
+            .get(0)
+            .path("tvShow");
+    assertThat(summary.path("watchedCount").asLong()).isEqualTo(2);
+    assertThat(summary.path("airedCount").asLong()).isEqualTo(2);
+    assertThat(summary.path("season").asInt()).isEqualTo(1);
+    assertThat(summary.path("episode").asInt()).isEqualTo(2);
+    assertThat(summary.path("seasonEpisodeCount").asLong()).isEqualTo(4);
+    entityTestClock.set(Instant.parse("2026-10-26T00:00:01Z"));
+    summary =
+        request(200, "GET", "/entities?type=TV_SHOW", owner, null)
+            .path("items")
+            .get(0)
+            .path("tvShow");
+    assertThat(summary.path("airedCount").asLong()).isEqualTo(3);
+    assertThat(summary.path("watchedCount").asLong()).isEqualTo(2);
+    assertThat(summary.path("newEpisodesAvailable").asBoolean()).isTrue();
+    request(201, "POST", "/tvmaze/entities", other, Map.of("tvmazeId", 1));
+    var otherSummary =
+        request(200, "GET", "/entities?type=TV_SHOW", other, null)
+            .path("items")
+            .get(0)
+            .path("tvShow");
+    assertThat(otherSummary.path("watchedCount").asLong()).isZero();
+  }
+
+  @Test
   void newlyAiredEpisodesDowngradeAndClearOnlyAfterWatching() throws Exception {
     var e = request(201, "POST", "/tvmaze/entities", owner, Map.of("tvmazeId", 1));
     publish(1);

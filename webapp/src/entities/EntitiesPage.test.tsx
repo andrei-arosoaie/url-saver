@@ -244,9 +244,16 @@ it("uses exact event versions and UTC timestamps for history corrections and del
   fireEvent.click(
     await screen.findByRole("button", { name: "Edit timestamp" }),
   );
-  fireEvent.change(screen.getByLabelText("Correct completed at (UTC)"), {
-    target: { value: "2025-12-31T23:59:59.123456" },
-  });
+  expect(
+    (screen.getByLabelText("Correct completed at (UTC)") as HTMLInputElement)
+      .type,
+  ).toBe("datetime-local");
+  fireEvent.change(
+    screen.getByLabelText("Exact timestamp for Correct completed at (UTC)"),
+    {
+      target: { value: "2025-12-31T23:59:59.123456" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Save timestamp" }));
   await waitFor(() =>
     expect(api.correct).toHaveBeenCalledWith(

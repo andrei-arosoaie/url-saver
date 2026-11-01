@@ -2,6 +2,7 @@ import type { EntitySummary } from "./model";
 import { useId } from "react";
 import { shortDate, statusLabel, types } from "./model";
 import styles from "./Entities.module.css";
+import { ViewingProgress } from "./ViewingProgress";
 export function Status({
   entity,
 }: {
@@ -28,8 +29,9 @@ export function EntityTable({
   grouped?: boolean;
 }) {
   if (!items.length) return null;
+  const television = items[0].type === "TV_SHOW";
   return (
-    <table className={styles.table}>
+    <table className={`${styles.table} ${television ? styles.tvTable : ""}`}>
       <thead>
         <tr>
           <th scope="col">Title</th>
@@ -37,7 +39,9 @@ export function EntityTable({
           <th scope="col" className={styles.createdColumn}>
             Created
           </th>
-          <th scope="col">{types[items[0].type].date}</th>
+          <th scope="col">
+            {television ? "Progress" : types[items[0].type].date}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -52,12 +56,18 @@ export function EntityTable({
                 onClick={() => onSelect(entity.id)}
               >
                 {entity.title}
+                {television && entity.tvShow?.premiereYear && (
+                  <span className={styles.premiereYear}>
+                    ({entity.tvShow.premiereYear})
+                  </span>
+                )}
                 {entity.tvShow?.alias && ` · ${entity.tvShow.alias}`}
-                <span className={styles.pencil} aria-hidden="true">
-                  ✎
-                </span>
+                {!television && (
+                  <span className={styles.pencil} aria-hidden="true">
+                    ✎
+                  </span>
+                )}
               </button>
-              <TvCompact entity={entity} />
               <small className={styles.mobileCreated}>
                 Created {shortDate(entity.createdAt)}
               </small>
@@ -73,21 +83,35 @@ export function EntityTable({
               </time>
             </td>
             <td className={styles.date}>
-              {entity.latestMatchingCompletionAt ? (
-                <time
-                  dateTime={entity.latestMatchingCompletionAt}
-                  title={`Completion timestamp (UTC): ${entity.latestMatchingCompletionAt}`}
-                >
-                  {shortDate(entity.latestMatchingCompletionAt)}
-                </time>
+              {television ? (
+                entity.tvShow ? (
+                  <TvCompact entity={entity} />
+                ) : (
+                  <span className={styles.progressNote}>
+                    Match a show to track episodes
+                  </span>
+                )
               ) : (
-                "—"
-              )}
-              {entity.completionCount > 0 && (
-                <small className={styles.count}>
-                  {entity.completionCount}{" "}
-                  {entity.completionCount === 1 ? "completion" : "completions"}
-                </small>
+                <>
+                  {entity.latestMatchingCompletionAt ? (
+                    <time
+                      dateTime={entity.latestMatchingCompletionAt}
+                      title={`Completion timestamp (UTC): ${entity.latestMatchingCompletionAt}`}
+                    >
+                      {shortDate(entity.latestMatchingCompletionAt)}
+                    </time>
+                  ) : (
+                    "—"
+                  )}
+                  {entity.completionCount > 0 && (
+                    <small className={styles.count}>
+                      {entity.completionCount}{" "}
+                      {entity.completionCount === 1
+                        ? "completion"
+                        : "completions"}
+                    </small>
+                  )}
+                </>
               )}
             </td>
           </tr>
@@ -101,21 +125,48 @@ export function TvCompact({ entity }: { entity: EntitySummary }) {
   const tooltipId = useId();
   if (!entity.tvShow) return null;
   return (
-    <span className={styles.tvCompact}>
-      {entity.tvShow.position && <span>{entity.tvShow.position}</span>}
-      {entity.tvShow.newEpisodesAvailable && (
-        <span
-          className={styles.newBadge}
-          tabIndex={0}
-          aria-describedby={tooltipId}
-          aria-label="New episodes available"
-        >
-          NEW
-          <span id={tooltipId} role="tooltip" className={styles.newTooltip}>
-            New episodes available
+    <div className={styles.tvCompact}>
+      <div className={styles.positionBadges}>
+        {entity.tvShow.position ? (
+          <>
+            <span className={styles.seasonBadge}>
+              {entity.tvShow.position.match(/^S\d+/)?.[0] ??
+                `S${entity.tvShow.season ?? "?"}`}
+            </span>
+            <span className={styles.episodeBadge}>
+              {entity.tvShow.position.match(/E[\d?]+$/)?.[0] ??
+                `E${entity.tvShow.episode ?? "?"}`}
+            </span>
+            {(entity.tvShow.seasonEpisodeCount ?? 0) > 0 && (
+              <span title="Episode number / episodes in this season">
+                · {entity.tvShow.episode ?? "?"}/
+                {entity.tvShow.seasonEpisodeCount}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className={styles.progressNote}>Position not set</span>
+        )}
+        {entity.tvShow.newEpisodesAvailable && (
+          <span
+            className={styles.newBadge}
+            tabIndex={0}
+            aria-describedby={tooltipId}
+            aria-label="New episodes available"
+          >
+            NEW
+            <span id={tooltipId} role="tooltip" className={styles.newTooltip}>
+              New episodes available
+            </span>
           </span>
-        </span>
-      )}
-    </span>
+        )}
+      </div>
+      <ViewingProgress
+        title={entity.title}
+        watchedCount={entity.tvShow.watchedCount ?? 0}
+        airedCount={entity.tvShow.airedCount ?? 0}
+        ready={entity.tvShow.catalogReady === true}
+      />
+    </div>
   );
 }

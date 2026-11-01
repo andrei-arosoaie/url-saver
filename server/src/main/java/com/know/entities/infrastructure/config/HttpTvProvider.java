@@ -107,7 +107,8 @@ public class HttpTvProvider implements TvProvider {
             show.averageRuntime(),
             show.tvmazeRating(),
             show.imdbUrl(),
-            next),
+            next,
+            show.premiereYear()),
         seasons,
         episodes);
   }
@@ -128,7 +129,9 @@ public class HttpTvProvider implements TvProvider {
         rating.isNumber() ? rating.asDouble() : null,
         imdb != null && imdb.matches("tt[0-9]+")
             ? "https://www.imdb.com/title/" + imdb + "/"
-            : null);
+            : null,
+        null,
+        text(s, "premiered") == null ? null : LocalDate.parse(text(s, "premiered")).getYear());
   }
 
   private JsonNode get(String path) {

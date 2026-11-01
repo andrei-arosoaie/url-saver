@@ -15,7 +15,7 @@ public record TvProperties(
     @DefaultValue("300") @Positive int debounceMs,
     @DefaultValue("8") @Positive int pageSize,
     @DefaultValue("10000") @Positive int cacheRowLimit,
-    @DefaultValue("24h") Duration catalogTtl,
+    @DefaultValue("1h") Duration catalogTtl,
     @DefaultValue("24h") Duration positiveTtl,
     @DefaultValue("15m") Duration emptyTtl,
     @DefaultValue("7d") Duration staleWindow,

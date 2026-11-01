@@ -58,7 +58,10 @@ export function EntitiesPage({
           ),
     [api, route.type, route.query, route.year, route.view, revision],
   );
-  const page = usePage(load);
+  const page = usePage(
+    load,
+    route.type === "TV_SHOW" && route.view !== "year" ? 60_000 : 0,
+  );
   useEffect(() => {
     const controller = new AbortController();
     setYears([]);
@@ -410,7 +413,7 @@ function YearGroup({
       ),
     [api, route.type, route.query, year.year],
   );
-  const page = usePage(load);
+  const page = usePage(load, route.type === "TV_SHOW" ? 60_000 : 0);
   return (
     <details className={styles.yearGroup} open>
       <summary>

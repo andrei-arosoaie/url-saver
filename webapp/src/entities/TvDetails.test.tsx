@@ -175,7 +175,7 @@ function fixture(start: Details = initial) {
                   name: null,
                   regularEpisodeCount: 3,
                   airedCount: 1,
-                  watchedCount: 0,
+                  watchedCount: data.watchedCount,
                 },
                 {
                   id: 20,
@@ -191,7 +191,11 @@ function fixture(start: Details = initial) {
         };
       else if (path.endsWith("/episodes"))
         result = {
-          items: path.includes("/20/") ? [episodes[2]] : episodes,
+          items: path.includes("/20/")
+            ? [episodes[2]]
+            : episodes.map((e) =>
+                e.id === 11 ? { ...e, watched: data.watchedCount > 0 } : e,
+              ),
           metadataStatus: "READY",
         };
       else result = data;
@@ -230,7 +234,7 @@ it("enables season and episode selection when a pending catalog loads and preser
   await waitFor(() =>
     expect(
       within(screen.getByLabelText("Season")).getAllByRole("option"),
-    ).toHaveLength(3),
+    ).toHaveLength(2),
   );
   expect(
     (screen.getByRole("group", { name: "Last watched" }) as HTMLFieldSetElement)
@@ -281,7 +285,7 @@ it("keeps position separate, confirms bulk marking and disables seasons without 
   await screen.findByText("Show · My label");
   const season = screen.getByLabelText("Season");
   await waitFor(() =>
-    expect(within(season).getAllByRole("option")).toHaveLength(3),
+    expect(within(season).getAllByRole("option")).toHaveLength(2),
   );
   fireEvent.change(season, { target: { value: "10" } });
   const episode = screen.getByLabelText("Episode");
@@ -306,7 +310,8 @@ it("keeps position separate, confirms bulk marking and disables seasons without 
   await waitFor(() =>
     expect(screen.getByText("New episodes available")).toBeTruthy(),
   );
-  fireEvent.change(season, { target: { value: "20" } });
+  expect(within(season).queryByText("Season 2")).toBeNull();
+  fireEvent.change(season, { target: { value: "" } });
   await waitFor(() =>
     expect(
       (screen.getByLabelText("Episode") as HTMLSelectElement).disabled,
@@ -320,6 +325,21 @@ it("keeps position separate, confirms bulk marking and disables seasons without 
     ).disabled,
   ).toBe(true);
   expect(mutations).toHaveLength(1);
+});
+it("excludes fully watched seasons and watched episodes from Last watched but retains the episode browser", async () => {
+  fixture({ ...initial, watchedCount: 1, canMarkSeen: true });
+  await screen.findByText("Show · My label");
+  await screen.findByText("All released episodes are watched.");
+  expect(
+    within(screen.getByLabelText("Season")).queryByText("Season 1"),
+  ).toBeNull();
+  expect(
+    within(screen.getByLabelText("Season")).queryByText("Season 2"),
+  ).toBeNull();
+  fireEvent.click(screen.getByText(/Episodes · Season/));
+  expect(
+    within(screen.getByLabelText("Browse season")).getByText("Season 1"),
+  ).toBeTruthy();
 });
 it("allows explicit unknown-date watching while blocking future episodes", async () => {
   const { mutations } = fixture();
