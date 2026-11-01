@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { App } from "./App";
 import { beginSignIn, initializeAuthentication, signOut } from "./auth";
+import { ProfileMenu } from "./profile/ProfileMenu";
 
 let initialization: Promise<boolean> | undefined;
 export function AuthenticatedApp() {
@@ -60,23 +61,16 @@ export function AuthenticatedApp() {
       </main>
     );
   return (
-    <>
-      <div className="auth-account">
-        <button
-          onClick={() => {
-            void signOut()
-              .then(() => {
-                initialization = undefined;
-                setSignedIn(false);
-              })
-              .catch((reason: Error) => setError(reason.message));
+    <App
+      accountControl={
+        <ProfileMenu
+          onSignOut={async () => {
+            await signOut();
+            initialization = undefined;
+            setSignedIn(false);
           }}
-        >
-          Sign out
-        </button>
-        {error && <span role="alert">{error}</span>}
-      </div>
-      <App />
-    </>
+        />
+      }
+    />
   );
 }

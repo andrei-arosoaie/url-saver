@@ -31,6 +31,13 @@
   gap: 3px;
   flex-shrink: 0;
 }
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
 .version {
   padding-left: 41px;
   color: var(--muted);
@@ -63,17 +70,6 @@
 }
 .search input::placeholder {
   color: var(--muted);
-}
-.avatar {
-  background: var(--accent);
-  color: var(--panel);
-  width: 31px;
-  height: 31px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  flex-shrink: 0;
 }
 .shell {
   display: grid;
@@ -363,12 +359,9 @@
     max-width: none;
     margin: 0;
   }
-  .header > div:not(.identity) {
+  .headerActions {
     margin-left: auto;
-  }
-  .avatar {
-    width: 31px;
-    height: 31px;
+    gap: 12px;
   }
   .shell {
     display: block;

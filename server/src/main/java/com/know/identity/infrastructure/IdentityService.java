@@ -32,6 +32,8 @@ public class IdentityService {
 
   public record Tokens(String accessToken, String refreshToken, long expiresIn) {}
 
+  public record Profile(String displayName, String pictureUrl, boolean pictureRemoved) {}
+
   private record Session(UUID id, UUID account, String client, Instant expiry, boolean revoked) {}
 
   public static String randomToken() {
@@ -54,6 +56,12 @@ public class IdentityService {
 
   @Transactional
   public UUID resolveGoogle(String issuer, String subject, String email, boolean verified) {
+    return resolveGoogle(issuer, subject, email, verified, null, null);
+  }
+
+  @Transactional
+  public UUID resolveGoogle(
+      String issuer, String subject, String email, boolean verified, String name, String picture) {
     if (!List.of("https://accounts.google.com", "accounts.google.com").contains(issuer)
         || subject == null
         || subject.isBlank()
@@ -66,7 +74,10 @@ public class IdentityService {
             (rs, n) -> rs.getObject(1, UUID.class),
             "https://accounts.google.com",
             subject);
-    if (!existing.isEmpty()) return existing.getFirst();
+    if (!existing.isEmpty()) {
+      updateProfile(existing.getFirst(), name, email, picture);
+      return existing.getFirst();
+    }
     UUID account;
     var legacy = properties.legacyAccount();
     boolean owner = email != null && email.equalsIgnoreCase(legacy.ownerEmail());
@@ -84,7 +95,51 @@ public class IdentityService {
         "https://accounts.google.com",
         subject,
         account);
+    updateProfile(account, name, email, picture);
     return account;
+  }
+
+  private void updateProfile(UUID account, String name, String email, String picture) {
+    String displayName =
+        name == null || name.isBlank() ? email == null ? "Your account" : email : name;
+    String safePicture = null;
+    if (picture != null && picture.length() <= 2048) {
+      try {
+        var uri = java.net.URI.create(picture);
+        if ("https".equals(uri.getScheme())
+            && uri.getUserInfo() == null
+            && (uri.getPort() == -1 || uri.getPort() == 443)
+            && uri.getHost() != null
+            && (uri.getHost().equals("googleusercontent.com")
+                || uri.getHost().endsWith(".googleusercontent.com"))) safePicture = picture;
+      } catch (IllegalArgumentException ignored) {
+        /* A missing photo never blocks sign-in. */
+      }
+    }
+    jdbc.update(
+        "insert into identity_profiles(account_id,display_name,picture_url) values (?,?,?) on conflict(account_id) do update set display_name=excluded.display_name,picture_url=case when identity_profiles.picture_removed then null else excluded.picture_url end",
+        account,
+        displayName,
+        safePicture);
+  }
+
+  public Profile profile(UUID account) {
+    return jdbc
+        .query(
+            "select display_name,picture_url,picture_removed from identity_profiles where account_id=?",
+            (rs, n) -> new Profile(rs.getString(1), rs.getString(2), rs.getBoolean(3)),
+            account)
+        .stream()
+        .findFirst()
+        .orElse(new Profile("Your account", null, false));
+  }
+
+  @Transactional
+  public Profile removePicture(UUID account) {
+    jdbc.update(
+        "insert into identity_profiles(account_id,display_name,picture_removed) values (?,'Your account',true) on conflict(account_id) do update set picture_url=null,picture_removed=true",
+        account);
+    return profile(account);
   }
 
   @Transactional

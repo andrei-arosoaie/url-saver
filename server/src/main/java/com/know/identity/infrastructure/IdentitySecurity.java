@@ -203,7 +203,9 @@ public class IdentitySecurity {
                                       user.getIssuer().toString(),
                                       user.getSubject(),
                                       user.getEmail(),
-                                      Boolean.TRUE.equals(user.getEmailVerified()));
+                                      Boolean.TRUE.equals(user.getEmailVerified()),
+                                      user.getFullName(),
+                                      user.getPicture());
                               var code =
                                   service.authorize(
                                       account,

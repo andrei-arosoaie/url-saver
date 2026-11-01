@@ -76,7 +76,11 @@ final class GoogleOidcFixture {
                     "email",
                     "protocol@example.test",
                     "email_verified",
-                    true);
+                    true,
+                    "name",
+                    "Protocol User",
+                    "picture",
+                    "https://lh3.googleusercontent.com/protocol-photo");
         case "/token" -> {
           var params =
               form(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
@@ -96,6 +100,8 @@ final class GoogleOidcFixture {
                   .claim("nonce", nonce)
                   .claim("email", "protocol@example.test")
                   .claim("email_verified", true)
+                  .claim("name", "Protocol User")
+                  .claim("picture", "https://lh3.googleusercontent.com/protocol-photo")
                   .build();
           var jwt =
               new SignedJWT(
