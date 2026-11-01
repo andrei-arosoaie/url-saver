@@ -17,6 +17,12 @@ For development, npm run dev proxies /api to localhost:8080. Set KNOW_DEV_API_OR
 
 ## Behavior
 
+The header displays `v0.<Git commit count>.0` and the short commit ID. Every committed
+change advances at least the minor version; no manual package-version bump is needed.
+Tracked local edits preview the next minor version with a `-dev` suffix. Builds require
+full Git history (`fetch-depth: 0` in CI) and embed the same version/revision in HTML
+metadata so deployments can be checked without signing in.
+
 - Timeline: newest-first cursor pagination, category/search filters, explicit versioned metadata edits, reader and manual retries.
 - Entities: exactly one type, Table/Board/By year, manual creation, editable details, type-specific statuses, completion history and linked source pages.
 - Completing a status records server time automatically. Past completions can be recorded, corrected with microsecond UTC precision or removed without rewriting current status.

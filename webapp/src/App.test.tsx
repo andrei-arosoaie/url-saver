@@ -16,6 +16,11 @@ const emptyEntities = {
 import type { Article, LibraryApi, Summary } from "./api";
 it("applies an explicit theme to both the app and sandboxed reader", async () => {
   render(<App api={fixture()} entities={emptyEntities} />);
+  expect(
+    screen.getByLabelText(
+      `Application version ${__APP_BUILD__.version}, revision ${__APP_BUILD__.revision}`,
+    ).textContent,
+  ).toBe(`v${__APP_BUILD__.version} · ${__APP_BUILD__.revision}`);
   fireEvent.click(
     await screen.findByRole("button", { name: /A thoughtful article/ }),
   );
