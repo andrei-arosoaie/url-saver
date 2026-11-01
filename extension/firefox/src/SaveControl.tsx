@@ -20,10 +20,12 @@ export function SaveControl({
   extract,
   send,
   pageUrl,
+  onSignIn,
 }: {
   extract: () => Capture;
   send: Send;
   pageUrl?: string;
+  onSignIn?: () => Promise<void>;
 }) {
   const [state, setState] = useState("ready");
   const [message, setMessage] = useState("");
@@ -32,6 +34,7 @@ export function SaveControl({
   const [progress, setProgress] = useState<Reply["progress"]>();
   const [clock, setClock] = useState(Date.now());
   const [dismissed, setDismissed] = useState(false);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const alive = useRef(true);
   const inFlight = useRef(false);
   const interaction = useRef(0);
@@ -94,6 +97,7 @@ export function SaveControl({
   }
   async function receive(result: Reply, value?: Capture) {
     if (!alive.current) return;
+    setNeedsSignIn(result.status === 401);
     if (result.progress) {
       setProgress(result.progress);
       setState("retrying");
@@ -295,6 +299,22 @@ export function SaveControl({
                     : "Saving article…"
               : message}
           </p>
+          {needsSignIn && onSignIn && (
+            <button
+              onClick={() => {
+                void onSignIn()
+                  .then(() => {
+                    setNeedsSignIn(false);
+                    fail("Signed in. Click Save again to save this article.");
+                  })
+                  .catch(() =>
+                    fail("Sign-in was cancelled or failed. Please try again."),
+                  );
+              }}
+            >
+              Sign in with Google
+            </button>
+          )}
           {progress?.target === "screenshot" &&
             progress.phase === "waiting" && (
               <button onClick={() => void retryScreenshot()}>

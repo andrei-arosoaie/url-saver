@@ -26,6 +26,8 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      "/oauth2": process.env.KNOW_DEV_API_ORIGIN || "http://localhost:8080",
+      "/login": process.env.KNOW_DEV_API_ORIGIN || "http://localhost:8080",
       "/api": process.env.KNOW_DEV_API_ORIGIN || "http://localhost:8080",
     },
   },

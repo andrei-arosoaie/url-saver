@@ -1,4 +1,12 @@
 server:
+  forward-headers-strategy: native
+  servlet:
+    session:
+      timeout: 5m
+      cookie:
+        http-only: true
+        secure: ${know.identity.cookie.secure:true}
+        same-site: lax
   address: 0.0.0.0
   port: ${PORT:8080}
 spring:
@@ -12,7 +20,7 @@ spring:
       fail-on-unknown-properties: true
       accept-float-as-int: false
   config:
-    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml,optional:file:./config/embedding-secrets.yml,optional:file:/etc/secrets/embedding-secrets.yml
+    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml,optional:file:./config/embedding-secrets.yml,optional:file:/etc/secrets/embedding-secrets.yml,file:./config/auth-secrets.yml
   servlet:
     multipart:
       max-file-size: 20MB
@@ -33,6 +41,8 @@ logging:
     format:
       console: ecs
 know:
+  identity:
+    enabled: true
   categories:
     max-name-code-points: 100
   screenshots:
@@ -50,8 +60,8 @@ know:
     default-limit: 20
     max-limit: 100
   temporary-account:
-    # Temporary shared account for the current functionality-only iteration.
-    enabled: true
+    # Fixture/preview compatibility only; production API requires a signed Know JWT.
+    enabled: false
     id: 00000000-0000-4000-8000-000000000001
   articles:
     max-content-bytes: 4194304

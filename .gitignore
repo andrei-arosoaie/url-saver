@@ -6,6 +6,7 @@
 **/.wxt/
 server/config/*.yml
 !server/config/*.example.yml
+server/config/*.pem
 .env
 .env.*
 !.env.example

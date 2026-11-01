@@ -49,7 +49,11 @@ it("saves through UI/background/HTTP/PostgreSQL, retries the original image afte
     },
   });
   const request = vi.fn<typeof fetch>((...args) => globalThis.fetch(...args));
-  const api = new ArticleApi(origin, async () => undefined, request);
+  const api = new ArticleApi(
+    origin,
+    async () => import.meta.env.KNOW_IT_ACCESS_TOKEN,
+    request,
+  );
   const capture = {
     url: `https://example.test/phase4/${crypto.randomUUID()}`,
     title: "Native viewport",

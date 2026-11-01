@@ -8,6 +8,7 @@ export const screenshotPrefix = "know:pending-screenshot:";
 export const screenshotKey = (url: string) =>
   screenshotPrefix + encodeURIComponent(url);
 export type ScreenshotJob = {
+  authSession?: string;
   articleId: string;
   captureId: string;
   dataUrl?: string;

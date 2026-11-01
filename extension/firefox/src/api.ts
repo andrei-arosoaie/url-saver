@@ -66,7 +66,7 @@ export class ArticleApi {
         error?.reason,
         error?.existingArticleId,
         response.status === 401
-          ? "Saving is unavailable. Please try again after the server is updated."
+          ? "Sign in to Know, then click Save again."
           : response.status === 413
             ? "Article exceeds the server content limit. Nothing was saved."
             : error?.reason === "VERSION_CONFLICT"

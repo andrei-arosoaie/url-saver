@@ -78,3 +78,31 @@ button:focus-visible {
 svg {
   flex-shrink: 0;
 }
+
+.auth-screen {
+  max-width: 480px;
+  margin: 15vh auto;
+  padding: 32px;
+  text-align: center;
+}
+.auth-screen button,
+.auth-account button {
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+.auth-version {
+  color: var(--muted);
+  font: 11px monospace;
+}
+.auth-account {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 24px;
+  background: var(--bg);
+  color: var(--ink);
+}
