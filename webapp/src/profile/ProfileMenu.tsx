@@ -137,7 +137,7 @@ export function ProfileMenu({
             Retry profile
           </button>
         )}
-        {profile?.pictureUrl && (
+        {profile?.pictureUrl && !profile.pictureRemoved && (
           <button
             disabled={busy}
             onClick={() =>
@@ -153,6 +153,24 @@ export function ProfileMenu({
             }
           >
             Remove profile photo
+          </button>
+        )}
+        {profile?.pictureRemoved && (
+          <button
+            disabled={busy}
+            onClick={() =>
+              void act(async () => {
+                const controller = new AbortController();
+                request.current = controller;
+                const updated = await api.restorePicture(controller.signal);
+                if (alive.current) {
+                  setProfile(updated);
+                  setBrokenPicture(false);
+                }
+              })
+            }
+          >
+            Restore Google photo
           </button>
         )}
         <button disabled={busy} onClick={() => void act(onSignOut)}>

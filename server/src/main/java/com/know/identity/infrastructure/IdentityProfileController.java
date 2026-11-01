@@ -27,4 +27,11 @@ public class IdentityProfileController {
         .header("Cache-Control", "no-store")
         .body(service.removePicture((UUID) authentication.getPrincipal()));
   }
+
+  @PutMapping("/picture")
+  public ResponseEntity<IdentityService.Profile> restorePicture(Authentication authentication) {
+    return ResponseEntity.ok()
+        .header("Cache-Control", "no-store")
+        .body(service.restorePicture((UUID) authentication.getPrincipal()));
+  }
 }

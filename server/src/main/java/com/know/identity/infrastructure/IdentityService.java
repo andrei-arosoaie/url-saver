@@ -117,7 +117,7 @@ public class IdentityService {
       }
     }
     jdbc.update(
-        "insert into identity_profiles(account_id,display_name,picture_url) values (?,?,?) on conflict(account_id) do update set display_name=excluded.display_name,picture_url=case when identity_profiles.picture_removed then null else excluded.picture_url end",
+        "insert into identity_profiles(account_id,display_name,picture_url) values (?,?,?) on conflict(account_id) do update set display_name=excluded.display_name,picture_url=excluded.picture_url",
         account,
         displayName,
         safePicture);
@@ -126,7 +126,7 @@ public class IdentityService {
   public Profile profile(UUID account) {
     return jdbc
         .query(
-            "select display_name,picture_url,picture_removed from identity_profiles where account_id=?",
+            "select display_name,case when picture_removed then null else picture_url end,picture_removed from identity_profiles where account_id=?",
             (rs, n) -> new Profile(rs.getString(1), rs.getString(2), rs.getBoolean(3)),
             account)
         .stream()
@@ -137,8 +137,14 @@ public class IdentityService {
   @Transactional
   public Profile removePicture(UUID account) {
     jdbc.update(
-        "insert into identity_profiles(account_id,display_name,picture_removed) values (?,'Your account',true) on conflict(account_id) do update set picture_url=null,picture_removed=true",
+        "insert into identity_profiles(account_id,display_name,picture_removed) values (?,'Your account',true) on conflict(account_id) do update set picture_removed=true",
         account);
+    return profile(account);
+  }
+
+  @Transactional
+  public Profile restorePicture(UUID account) {
+    jdbc.update("update identity_profiles set picture_removed=false where account_id=?", account);
     return profile(account);
   }
 

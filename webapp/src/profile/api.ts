@@ -6,6 +6,7 @@ export interface Profile {
 export interface ProfileApi {
   get(signal: AbortSignal): Promise<Profile>;
   removePicture(signal: AbortSignal): Promise<Profile>;
+  restorePicture(signal: AbortSignal): Promise<Profile>;
 }
 async function request(
   method: string,
@@ -22,7 +23,9 @@ async function request(
     throw new Error(
       method === "DELETE"
         ? "Could not remove your photo. Please try again."
-        : "Could not load your profile. Please try again.",
+        : method === "PUT"
+          ? "Could not restore your photo. Please try again."
+          : "Could not load your profile. Please try again.",
     );
   const value = await response.json();
   if (
@@ -37,4 +40,6 @@ export const profileApi: ProfileApi = {
   get: (signal) => request("GET", "/api/v1/identity/profile", signal),
   removePicture: (signal) =>
     request("DELETE", "/api/v1/identity/profile/picture", signal),
+  restorePicture: (signal) =>
+    request("PUT", "/api/v1/identity/profile/picture", signal),
 };

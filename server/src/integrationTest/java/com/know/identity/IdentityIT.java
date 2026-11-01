@@ -356,6 +356,17 @@ class IdentityIT {
     var removed = http.send(remove, HttpResponse.BodyHandlers.ofString());
     assertThat(removed.statusCode()).isEqualTo(200);
     assertThat(removed.body()).contains("\"pictureUrl\":null", "\"pictureRemoved\":true");
+    var restore =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/api/v1/identity/profile/picture"))
+            .header("Authorization", "Bearer " + tokens.accessToken())
+            .PUT(HttpRequest.BodyPublishers.noBody())
+            .build();
+    var restored = http.send(restore, HttpResponse.BodyHandlers.ofString());
+    assertThat(restored.statusCode()).isEqualTo(200);
+    assertThat(restored.body())
+        .contains("https://lh3.googleusercontent.com/photo", "\"pictureRemoved\":false");
+    service.removePicture(account);
     service.resolveGoogle(
         "https://accounts.google.com",
         "profile-owner",
@@ -365,6 +376,10 @@ class IdentityIT {
         "https://lh3.googleusercontent.com/new-photo");
     assertThat(service.profile(account))
         .isEqualTo(new IdentityService.Profile("Andrei Renamed", null, true));
+    var restoredLatest = http.send(restore, HttpResponse.BodyHandlers.ofString());
+    assertThat(restoredLatest.statusCode()).isEqualTo(200);
+    assertThat(restoredLatest.body())
+        .contains("https://lh3.googleusercontent.com/new-photo", "\"pictureRemoved\":false");
     assertThat(service.profile(other).pictureUrl())
         .isEqualTo("https://lh3.googleusercontent.com/other");
     assertThat(get("/api/v1/identity/profile", null).statusCode()).isEqualTo(401);
