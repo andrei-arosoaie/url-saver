@@ -32,7 +32,8 @@ class EntityHashCollisionTest {
             mock(CompletionRepository.class),
             mock(LinkRepository.class),
             mock(EntityPersistenceMapper.class),
-            mock(EntityManager.class));
+            mock(EntityManager.class),
+            java.time.Clock.systemUTC());
     assertThatThrownBy(() -> store.findExact(owner, EntityType.BOOK, "Requested title"))
         .isInstanceOfSatisfying(
             RequestFailure.class,

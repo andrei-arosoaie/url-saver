@@ -7,6 +7,10 @@ import java.time.Instant;
 import java.util.*;
 
 public interface EntityStore {
+  boolean identified(UUID owner, UUID id);
+
+  Details createIdentified(UUID owner, TvModels.Show show, String status, Instant now);
+
   void lockWrites(UUID owner);
 
   Optional<Details> find(UUID owner, UUID id);

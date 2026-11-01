@@ -51,6 +51,13 @@ public class EntityService {
     var owner = writeOwner();
     var entity = owned(owner, id);
     version(command.version(), entity.version());
+    if (command.title() != null
+        && !command.title().equals(entity.title())
+        && store.identified(owner, id))
+      throw new RequestFailure(
+          400,
+          "IDENTIFIED_TITLE_READ_ONLY",
+          "Identified show titles are read-only; edit the alias instead.");
     if (command.title() == null && command.status() == null)
       throw invalid("Supply title and/or status.");
     var title = command.title() == null ? entity.title() : command.title();
@@ -61,7 +68,7 @@ public class EntityService {
         !entity.status().equals(status) && status.equals(entity.type().completedStatus);
     if (command.completedAt() != null && !completing)
       throw invalid("completedAt requires a transition to completed status.");
-    rejectDuplicate(owner, entity.type(), title, id);
+    if (!store.identified(owner, id)) rejectDuplicate(owner, entity.type(), title, id);
     if (completing) {
       var now = now();
       store.addCompletion(owner, id, time(command.completedAt(), now), now);

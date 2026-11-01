@@ -1,0 +1,19 @@
+header.know-navigation .planning-layers {
+  max-height: var(--phase-menu-height, 230px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  overscroll-behavior-y: contain;
+  min-height: 0;
+  padding-right: 5px;
+  box-sizing: border-box;
+}
+header.know-navigation .know-nav-main {
+  align-items: start;
+}
+header.know-navigation .planning-layers:focus-visible {
+  outline: 2px solid var(--blue, var(--accent));
+  outline-offset: 3px;
+}

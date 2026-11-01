@@ -17,6 +17,9 @@ All four article endpoints and the Firefox capture client are implemented. The r
 
 ## Entities backend
 
+Phase 8 adds TV-show search, shared catalogs and viewing progress inside Entities.
+See [Phase 8 implementation and settings](PHASE8.md).
+
 - `/api/v1/entities`: GET one required type with search/status/completion-year filters and cursor pagination; POST manual creation.
 - `/api/v1/entities/{id}`: GET details; PATCH an explicit versioned title/status change.
 - `/api/v1/entities/years`: GET UTC completion years with distinct entity and event counts.

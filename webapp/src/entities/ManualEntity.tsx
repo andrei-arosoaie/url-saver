@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { EntityApiError, requiresReload, type EntityApi } from "./api";
 import { types, statusLabel, type EntityType, type Entity } from "./model";
 import styles from "./Entities.module.css";
+import { TvAutocomplete } from "./TvAutocomplete";
+import { createTv, type Candidate } from "./tvApi";
 export function ManualEntity({
   type,
   api,
@@ -18,6 +20,7 @@ export function ManualEntity({
   const dialog = useRef<HTMLDialogElement>(null),
     request = useRef<AbortController | null>(null);
   const [title, setTitle] = useState(""),
+    [candidate, setCandidate] = useState<Candidate | null>(null),
     [status, setStatus] = useState<string>(types[type].statuses[0]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null);
@@ -39,10 +42,10 @@ export function ManualEntity({
     setBusy(true);
     setError(null);
     try {
-      const entity = await api.create(
-        { type, title, status },
-        controller.signal,
-      );
+      const entity =
+        candidate && type === "TV_SHOW"
+          ? await createTv(candidate, status, controller.signal)
+          : await api.create({ type, title, status }, controller.signal);
       if (!controller.signal.aborted) onCreated(entity);
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause);
@@ -62,16 +65,26 @@ export function ManualEntity({
     >
       <h2 id="manual-heading">Add {types[type].singular}</h2>
       <form className={styles.form} onSubmit={(event) => void save(event)}>
-        <label>
-          Title
-          <input
-            autoFocus
-            required
+        {type === "TV_SHOW" ? (
+          <TvAutocomplete
             value={title}
+            onChange={setTitle}
+            selected={candidate}
+            onSelect={setCandidate}
             disabled={busy}
-            onChange={(event) => setTitle(event.target.value)}
           />
-        </label>
+        ) : (
+          <label>
+            Title
+            <input
+              autoFocus
+              required
+              value={title}
+              disabled={busy}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
+        )}
         <label>
           Status
           <select

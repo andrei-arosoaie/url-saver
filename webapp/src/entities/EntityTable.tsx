@@ -1,4 +1,5 @@
 import type { EntitySummary } from "./model";
+import { useId } from "react";
 import { shortDate, statusLabel, types } from "./model";
 import styles from "./Entities.module.css";
 export function Status({
@@ -51,10 +52,12 @@ export function EntityTable({
                 onClick={() => onSelect(entity.id)}
               >
                 {entity.title}
+                {entity.tvShow?.alias && ` · ${entity.tvShow.alias}`}
                 <span className={styles.pencil} aria-hidden="true">
                   ✎
                 </span>
               </button>
+              <TvCompact entity={entity} />
               <small className={styles.mobileCreated}>
                 Created {shortDate(entity.createdAt)}
               </small>
@@ -91,5 +94,28 @@ export function EntityTable({
         ))}
       </tbody>
     </table>
+  );
+}
+
+export function TvCompact({ entity }: { entity: EntitySummary }) {
+  const tooltipId = useId();
+  if (!entity.tvShow) return null;
+  return (
+    <span className={styles.tvCompact}>
+      {entity.tvShow.position && <span>{entity.tvShow.position}</span>}
+      {entity.tvShow.newEpisodesAvailable && (
+        <span
+          className={styles.newBadge}
+          tabIndex={0}
+          aria-describedby={tooltipId}
+          aria-label="New episodes available"
+        >
+          NEW
+          <span id={tooltipId} role="tooltip" className={styles.newTooltip}>
+            New episodes available
+          </span>
+        </span>
+      )}
+    </span>
   );
 }

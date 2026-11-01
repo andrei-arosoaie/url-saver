@@ -15,7 +15,21 @@ public final class EntityModels {
       Instant createdAt,
       long version,
       Instant lastCompletedAt,
-      long totalCompletionCount) {}
+      long totalCompletionCount,
+      TvSummary tvShow) {
+    public Details(
+        UUID id,
+        EntityType type,
+        String title,
+        String status,
+        Instant createdAt,
+        long version,
+        Instant lastCompletedAt,
+        long totalCompletionCount) {
+      this(
+          id, type, title, status, createdAt, version, lastCompletedAt, totalCompletionCount, null);
+    }
+  }
 
   public record Summary(
       UUID id,
@@ -27,7 +41,11 @@ public final class EntityModels {
       Instant lastCompletedAt,
       long totalCompletionCount,
       long completionCount,
-      Instant latestMatchingCompletionAt) {}
+      Instant latestMatchingCompletionAt,
+      TvSummary tvShow) {}
+
+  public record TvSummary(
+      long tvmazeId, String alias, String position, boolean newEpisodesAvailable) {}
 
   public record Completion(
       UUID id, UUID entityId, Instant completedAt, Instant createdAt, long version) {}

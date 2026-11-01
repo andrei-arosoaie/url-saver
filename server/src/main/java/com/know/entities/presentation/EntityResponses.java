@@ -30,7 +30,8 @@ public final class EntityResponses {
               types = {"string", "null"},
               format = "date-time")
           Instant lastCompletedAt,
-      long totalCompletionCount) {}
+      long totalCompletionCount,
+      com.know.entities.application.EntityModels.TvSummary tvShow) {}
 
   @Schema(
       requiredProperties = {
@@ -61,7 +62,8 @@ public final class EntityResponses {
       @Schema(
               types = {"string", "null"},
               format = "date-time")
-          Instant latestMatchingCompletionAt) {}
+          Instant latestMatchingCompletionAt,
+      com.know.entities.application.EntityModels.TvSummary tvShow) {}
 
   @Schema(requiredProperties = {"id", "entityId", "completedAt", "createdAt", "version"})
   public record CompletionResponse(

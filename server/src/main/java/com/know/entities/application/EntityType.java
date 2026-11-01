@@ -6,7 +6,7 @@ import java.util.Set;
 public enum EntityType {
   BOOK("TO_READ", "READ", Set.of("TO_READ", "READING", "READ")),
   MOVIE("TO_BE_SEEN", "SEEN", Set.of("TO_BE_SEEN", "SEEN")),
-  TV_SHOW("TO_BE_SEEN", "SEEN", Set.of("TO_BE_SEEN", "SEEN")),
+  TV_SHOW("TO_BE_SEEN", "SEEN", Set.of("TO_BE_SEEN", "SEEING", "SEEN")),
   GAME("TO_PLAY", "FINISHED", Set.of("TO_PLAY", "PLAYING", "FINISHED"));
 
   public final String initialStatus;

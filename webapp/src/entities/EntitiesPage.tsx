@@ -16,7 +16,7 @@ import {
   type CompletionYear,
 } from "./model";
 import { usePage } from "./usePage";
-import { EntityTable } from "./EntityTable";
+import { EntityTable, TvCompact } from "./EntityTable";
 import { EntityDetails } from "./EntityDetails";
 import { ManualEntity } from "./ManualEntity";
 import styles from "./Entities.module.css";
@@ -274,6 +274,8 @@ export function EntitiesPage({
                               onClick={() => open(entity.id)}
                             >
                               {entity.title}
+                              {entity.tvShow?.alias &&
+                                ` ? ${entity.tvShow.alias}`}
                               <span
                                 className={styles.pencil}
                                 aria-hidden="true"
@@ -281,6 +283,7 @@ export function EntitiesPage({
                                 ✎
                               </span>
                             </button>
+                            <TvCompact entity={entity} />
                             <p>Created: {shortDate(entity.createdAt)}</p>
                             {entity.latestMatchingCompletionAt && (
                               <p>
@@ -359,6 +362,26 @@ export function EntitiesPage({
       <p role="status" className={styles.notice}>
         {notice}
       </p>
+      {route.type === "TV_SHOW" && (
+        <details className={styles.help}>
+          <summary>Data sources</summary>
+          <p>
+            TV information from{" "}
+            <a href="https://www.tvmaze.com/" target="_blank" rel="noreferrer">
+              TVmaze
+            </a>
+            , available under{" "}
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CC BY-SA
+            </a>
+            . Synopses are displayed as plain text.
+          </p>
+        </details>
+      )}
       {manual && (
         <ManualEntity
           type={route.type}

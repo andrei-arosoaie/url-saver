@@ -24,6 +24,51 @@ public class JpaEntityStore implements EntityStore {
   private final LinkRepository links;
   private final EntityPersistenceMapper mapper;
   private final EntityManager em;
+  private final java.time.Clock entityClock;
+
+  public boolean identified(UUID owner, UUID id) {
+    return ((Number)
+                em.createNativeQuery(
+                        "select count(*) from entity_tv_shows where account_id=:owner and"
+                            + " entity_id=:id",
+                        Long.class)
+                    .setParameter("owner", owner)
+                    .setParameter("id", id)
+                    .getSingleResult())
+            .longValue()
+        > 0;
+  }
+
+  public Details createIdentified(UUID owner, TvModels.Show show, String status, Instant now) {
+    em.createNativeQuery(
+            "insert into tvmaze_shows(tvmaze_id,name) values (:show,:name) on conflict do nothing")
+        .setParameter("show", show.tvmazeId())
+        .setParameter("name", show.name())
+        .executeUpdate();
+    var entity =
+        new TrackedEntity(owner, EntityType.TV_SHOW, show.name(), hash(show.name()), status, now);
+    entity.identify(show.tvmazeId());
+    entities.saveAndFlush(entity);
+    em.createNativeQuery(
+            "insert into entity_tv_shows(account_id,entity_id,show_id,created_at,updated_at) values"
+                + " (:owner,:id,:show,:now,:now)")
+        .setParameter("owner", owner)
+        .setParameter("id", entity.getId())
+        .setParameter("show", show.tvmazeId())
+        .setParameter("now", now)
+        .executeUpdate();
+    if (status.equals("SEEN")) {
+      addCompletion(owner, entity.getId(), now, now);
+      em.createNativeQuery(
+              "update entity_tv_shows set last_marked_seen_at=:now where account_id=:owner and"
+                  + " entity_id=:id")
+          .setParameter("now", now)
+          .setParameter("owner", owner)
+          .setParameter("id", entity.getId())
+          .executeUpdate();
+    }
+    return detail(owner, entity);
+  }
 
   public void lockWrites(UUID owner) {
     // Serialize an account's entity mutations across server instances. The DB releases this lock
@@ -65,6 +110,18 @@ public class JpaEntityStore implements EntityStore {
 
   public Details revise(UUID owner, UUID id, String title, String status, boolean historyChanged) {
     var entity = entities.findByIdAndAccountId(id, owner).orElseThrow();
+    if (!entity.getStatus().equals(status)) {
+      em.createNativeQuery(
+              "update entity_tv_shows set"
+                  + " version=version+1,updated_at=:now,last_marked_seen_at=case when"
+                  + " :status='SEEN' then :now else last_marked_seen_at end where account_id=:owner"
+                  + " and entity_id=:id")
+          .setParameter("now", entityClock.instant())
+          .setParameter("status", status)
+          .setParameter("owner", owner)
+          .setParameter("id", id)
+          .executeUpdate();
+    }
     boolean changed = !entity.getTitle().equals(title) || !entity.getStatus().equals(status);
     if (changed) entity.revise(title, hash(title), status);
     else if (historyChanged) em.lock(entity, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
@@ -114,9 +171,15 @@ public class JpaEntityStore implements EntityStore {
     // Explicit AT TIME ZONE makes grouping independent of the database session timezone.
     var sql =
         new StringBuilder(
-            "select extract(year from c.completed_at at time zone 'UTC')::integer, count(distinct e.id), count(*) from entity_completions c join entities e on e.id=c.entity_id and e.account_id=c.account_id where e.account_id=:owner and e.type=:type");
+            "select extract(year from c.completed_at at time zone 'UTC')::integer, count(distinct"
+                + " e.id), count(*) from entity_completions c join entities e on e.id=c.entity_id"
+                + " and e.account_id=c.account_id where e.account_id=:owner and e.type=:type");
     if (filter.status() != null) sql.append(" and e.status=:status");
-    if (filter.query() != null) sql.append(" and lower(e.title) like :search escape '\\'");
+    if (filter.query() != null)
+      sql.append(
+          " and (lower(e.title) like :search escape '\\' or exists(select 1 from entity_tv_shows m"
+              + " where m.entity_id=e.id and m.account_id=e.account_id and lower(m.alias) like"
+              + " :search escape '\\'))");
     sql.append(" group by 1 order by 1 desc");
     var q =
         em.createNativeQuery(sql.toString(), Object[].class)
@@ -257,7 +320,10 @@ public class JpaEntityStore implements EntityStore {
     ps.add(cb.equal(root.get("type"), filter.type()));
     if (filter.status() != null) ps.add(cb.equal(root.get("status"), filter.status()));
     if (filter.query() != null)
-      ps.add(cb.like(cb.lower(root.get("title")), pattern(filter.query()), '\\'));
+      ps.add(
+          cb.or(
+              cb.like(cb.lower(root.get("title")), pattern(filter.query()), '\\'),
+              cb.like(cb.lower(root.get("tvAlias")), pattern(filter.query()), '\\')));
     return ps;
   }
 
