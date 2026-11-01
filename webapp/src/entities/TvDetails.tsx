@@ -11,6 +11,7 @@ import {
   type Episode,
 } from "./tvApi";
 import styles from "./Entities.module.css";
+import { ViewingProgress } from "./ViewingProgress";
 
 export function TvDetails({
   entity,
@@ -81,6 +82,13 @@ export function TvDetails({
       .then((result) => {
         if (!controller.signal.aborted) {
           setSeasons(result.items);
+          setPositionSeason((value) =>
+            result.items.some(
+              (s) => String(s.id) === value && s.airedCount > s.watchedCount,
+            )
+              ? value
+              : "",
+          );
           setSeason((value) =>
             result.items.some((s) => String(s.id) === value)
               ? value
@@ -110,6 +118,7 @@ export function TvDetails({
     return () => controller.abort();
   }, [path, season, data]);
   useEffect(() => {
+    setPositionEpisodes([]);
     if (!positionSeason) {
       setPositionEpisodes([]);
       setEpisode("");
@@ -123,7 +132,7 @@ export function TvDetails({
       .then((result) => {
         if (!controller.signal.aborted) {
           const available = result.items.filter(
-            (e) => e.airAt && e.canMarkWatched,
+            (e) => e.airAt && e.canMarkWatched && !e.watched,
           );
           setPositionEpisodes(available);
           setEpisode((value) =>
@@ -142,6 +151,13 @@ export function TvDetails({
     const timer = setTimeout(() => setReload((n) => n + 1), 5000);
     return () => clearTimeout(timer);
   }, [data, reload]);
+  useEffect(() => {
+    if (!data?.metadata.fetchedAt || busy || confirmation) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") setReload((n) => n + 1);
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [path, Boolean(data?.metadata.fetchedAt), busy, confirmation]);
   async function mutate(suffix: string, method: string, body: object) {
     const controller = new AbortController();
     write.current = controller;
@@ -234,15 +250,24 @@ export function TvDetails({
               <p>{data.show.summary}</p>
             </details>
           )}
+          <ViewingProgress
+            title={entity.title}
+            watchedCount={data.watchedCount}
+            airedCount={data.airedCount}
+            ready={data.metadata.fetchedAt !== null}
+          />
           <p>
             Saved position:{" "}
             {entity.tvShow?.position ??
               (data.lastWatchedEpisodeId
                 ? `Episode ${data.lastWatchedEpisodeId}`
                 : "Not set")}{" "}
-            · {data.watchedCount} watched / {data.airedCount} aired
           </p>
-          <fieldset disabled={blocked || !seasons.length}>
+          <fieldset
+            disabled={
+              blocked || !seasons.some((s) => s.airedCount > s.watchedCount)
+            }
+          >
             <legend>Last watched</legend>
             <label>
               Season
@@ -259,11 +284,13 @@ export function TvDetails({
                     ? "Loading seasons…"
                     : "Choose season"}
                 </option>
-                {seasons.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Season {s.number}
-                  </option>
-                ))}
+                {seasons
+                  .filter((s) => s.airedCount > s.watchedCount)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      Season {s.number}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -275,7 +302,7 @@ export function TvDetails({
               >
                 <option value="">
                   {positionSeason && !positionEpisodes.length
-                    ? "No aired episodes"
+                    ? "No unwatched released episodes"
                     : "Choose episode"}
                 </option>
                 {positionEpisodes.map((e) => (
@@ -288,7 +315,10 @@ export function TvDetails({
             <button
               type="button"
               className={styles.action}
-              disabled={!episode}
+              disabled={
+                !episode ||
+                !positionEpisodes.some((e) => String(e.id) === episode)
+              }
               onClick={() =>
                 void mutate("/position", "PATCH", {
                   version: data.version,
@@ -302,12 +332,23 @@ export function TvDetails({
             <button
               type="button"
               className={styles.action}
-              disabled={!episode}
+              disabled={
+                !episode ||
+                !positionEpisodes.some((e) => String(e.id) === episode)
+              }
               onClick={() => setConfirmation("bulk")}
             >
               Save and mark previous watched…
             </button>
           </fieldset>
+          {seasons.length > 0 &&
+            !seasons.some((s) => s.airedCount > s.watchedCount) && (
+              <p className={styles.progressNote}>
+                {data.airedCount > 0
+                  ? "All released episodes are watched."
+                  : "No released episodes to select yet."}
+              </p>
+            )}
           <button
             type="button"
             className={styles.action}

@@ -6,6 +6,7 @@ import { requiresReload } from "./api";
 import { usePage } from "./usePage";
 import { exactCaptureTime } from "../timeline/dates";
 import styles from "./Entities.module.css";
+import { CompletionDateInput } from "./CompletionDateInput";
 
 export function CompletionHistory({
   entity,
@@ -93,18 +94,12 @@ export function CompletionHistory({
             }
           }}
         >
-          <label>
-            Completed at (UTC)
-            <input
-              type="text"
-              placeholder="YYYY-MM-DDTHH:mm:ss.ffffff"
-
-              required
-              value={time}
-              onChange={(event) => setTime(event.target.value)}
-              disabled={blocked}
-            />
-          </label>
+          <CompletionDateInput
+            label="Completed at (UTC)"
+            value={time}
+            onChange={setTime}
+            disabled={blocked}
+          />
           <button className={styles.action} disabled={blocked}>
             Record completion
           </button>
@@ -194,18 +189,12 @@ function HistoryEvent({
             }
           }}
         >
-          <label>
-            Correct completed at (UTC)
-            <input
-              type="text"
-              placeholder="YYYY-MM-DDTHH:mm:ss.ffffff"
-              required
-
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              disabled={blocked}
-            />
-          </label>
+          <CompletionDateInput
+            label="Correct completed at (UTC)"
+            value={value}
+            onChange={setValue}
+            disabled={blocked}
+          />
           {error && <p role="alert">{error}</p>}
           <div className={styles.historyActions}>
             <button className={styles.action} disabled={blocked}>

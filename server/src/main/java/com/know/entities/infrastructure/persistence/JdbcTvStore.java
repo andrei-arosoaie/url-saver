@@ -202,7 +202,7 @@ public class JdbcTvStore implements TvStore {
         """
         select s.*,count(e.tvmaze_id) as regular_count,
           count(e.tvmaze_id) filter(where e.air_at<=?) as aired_count,
-          count(w.episode_id) as watched_count
+          count(w.episode_id) filter(where e.air_at<=?) as watched_count
         from tvmaze_seasons s left join tvmaze_episodes e on e.season_id=s.tvmaze_id
           and e.show_id=s.show_id and e.episode_type='regular' and e.provider_present
         left join entity_episode_watches w on w.episode_id=e.tvmaze_id and w.account_id=? and w.entity_id=?
@@ -216,6 +216,7 @@ public class JdbcTvStore implements TvStore {
                 rs.getLong("regular_count"),
                 rs.getLong("aired_count"),
                 rs.getLong("watched_count")),
+        at(now),
         at(now),
         owner,
         m.entityId(),

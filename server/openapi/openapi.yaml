@@ -3200,13 +3200,33 @@ components:
     TvSummary:
       type: object
       properties:
+        airedCount:
+          type: integer
+          format: int64
         alias:
           type: string
+        catalogReady:
+          type: boolean
+        episode:
+          type: integer
+          format: int32
         newEpisodesAvailable:
           type: boolean
         position:
           type: string
+        premiereYear:
+          type: integer
+          format: int32
+        season:
+          type: integer
+          format: int32
+        seasonEpisodeCount:
+          type: integer
+          format: int64
         tvmazeId:
+          type: integer
+          format: int64
+        watchedCount:
           type: integer
           format: int64
     UpdateArticleRequest:

@@ -153,6 +153,8 @@ public class JpaEntityStore implements EntityStore {
         .orderBy(cb.desc(root.get("createdAt")), cb.desc(root.get("id")));
     var rows = em.createQuery(query).setMaxResults(limit).getResultList();
     var ids = rows.stream().map(TrackedEntity::getId).toList();
+    var tv =
+        filter.type() == EntityType.TV_SHOW ? tvSummaries(owner, ids) : Map.<UUID, TvSummary>of();
     var all = stats(owner, ids, null);
     var matching =
         filter.completionYear() == null ? all : stats(owner, ids, filter.completionYear());
@@ -161,8 +163,21 @@ public class JpaEntityStore implements EntityStore {
             e -> {
               var total = all.getOrDefault(e.getId(), Stats.EMPTY);
               var match = matching.getOrDefault(e.getId(), Stats.EMPTY);
-              return mapper.summary(
-                  mapper.details(e, total.last, total.count), match.count, match.last);
+              var summary =
+                  mapper.summary(
+                      mapper.details(e, total.last, total.count), match.count, match.last);
+              return new Summary(
+                  summary.id(),
+                  summary.type(),
+                  summary.title(),
+                  summary.status(),
+                  summary.createdAt(),
+                  summary.version(),
+                  summary.lastCompletedAt(),
+                  summary.totalCompletionCount(),
+                  summary.completionCount(),
+                  summary.latestMatchingCompletionAt(),
+                  tv.getOrDefault(e.getId(), summary.tvShow()));
             })
         .toList();
   }
@@ -283,7 +298,62 @@ public class JpaEntityStore implements EntityStore {
 
   private Details detail(UUID owner, TrackedEntity e) {
     var s = stats(owner, List.of(e.getId()), null).getOrDefault(e.getId(), Stats.EMPTY);
-    return mapper.details(e, s.last, s.count);
+    var d = mapper.details(e, s.last, s.count);
+    if (e.getTvmazeId() == null) return d;
+    return new Details(
+        d.id(),
+        d.type(),
+        d.title(),
+        d.status(),
+        d.createdAt(),
+        d.version(),
+        d.lastCompletedAt(),
+        d.totalCompletionCount(),
+        tvSummaries(owner, List.of(e.getId())).get(e.getId()));
+  }
+
+  private Map<UUID, TvSummary> tvSummaries(UUID owner, List<UUID> ids) {
+    if (ids.isEmpty()) return Map.of();
+    var query =
+        em.createNativeQuery(
+                """
+        select m.entity_id,m.show_id,m.alias,
+          case when p.tvmaze_id is not null then 'S'||lpad(p.season_number::text,2,'0')||'E'||coalesce(lpad(p.number::text,2,'0'),'?') end,
+          m.new_episodes_available or coalesce(count(e.tvmaze_id) filter(where e.air_at<=:now and e.air_at>m.last_marked_seen_at and w.episode_id is null)>0,false),
+          (s.payload->>'premiereYear')::integer,p.season_number,p.number,
+          count(e.tvmaze_id) filter(where e.season_number=p.season_number),
+          count(w.episode_id) filter(where e.air_at<=:now),
+          count(e.tvmaze_id) filter(where e.air_at<=:now),s.fetched_at is not null
+        from entity_tv_shows m join tvmaze_shows s on s.tvmaze_id=m.show_id
+        left join tvmaze_episodes p on p.tvmaze_id=m.last_watched_episode_id and p.show_id=m.show_id
+        left join tvmaze_episodes e on e.show_id=m.show_id and e.episode_type='regular' and e.provider_present
+        left join entity_episode_watches w on w.account_id=m.account_id and w.entity_id=m.entity_id and w.episode_id=e.tvmaze_id
+        where m.account_id=:owner and m.entity_id in (:ids)
+        group by m.entity_id,m.show_id,m.alias,m.new_episodes_available,m.last_marked_seen_at,s.payload,s.fetched_at,p.tvmaze_id,p.season_number,p.number
+        """,
+                Object[].class)
+            .setParameter("owner", owner)
+            .setParameter("ids", ids)
+            .setParameter("now", entityClock.instant());
+    @SuppressWarnings("unchecked")
+    List<Object[]> rows = query.getResultList();
+    Map<UUID, TvSummary> result = new HashMap<>();
+    for (var r : rows)
+      result.put(
+          (UUID) r[0],
+          new TvSummary(
+              ((Number) r[1]).longValue(),
+              (String) r[2],
+              (String) r[3],
+              Boolean.TRUE.equals(r[4]),
+              r[5] == null ? null : ((Number) r[5]).intValue(),
+              r[6] == null ? null : ((Number) r[6]).intValue(),
+              r[7] == null ? null : ((Number) r[7]).intValue(),
+              ((Number) r[8]).longValue(),
+              ((Number) r[9]).longValue(),
+              ((Number) r[10]).longValue(),
+              Boolean.TRUE.equals(r[11])));
+    return result;
   }
 
   private record Stats(long count, Instant last) {

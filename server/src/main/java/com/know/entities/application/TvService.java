@@ -180,7 +180,7 @@ public class TvService {
     var meta = store.metadata(m.tvmazeId());
     var episodes = store.episodes(owner, m, now());
     long aired = episodes.stream().filter(x -> aired(x, now())).count();
-    long watched = episodes.stream().filter(Episode::watched).count();
+    long watched = episodes.stream().filter(x -> aired(x, now()) && x.watched()).count();
     boolean caughtUp =
         meta.fetchedAt() != null
             && aired > 0
