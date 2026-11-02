@@ -49,11 +49,13 @@ export interface TvDetails {
   show: {
     name: string;
     posterUrl: string | null;
+    originalPosterUrl?: string | null;
     summary: string | null;
     genres: string[];
     providerStatus: string | null;
     averageRuntime: number | null;
     tvmazeRating: number | null;
+    premiereYear?: number | null;
     imdbUrl: string | null;
     nextEpisode?: Episode | null;
   } | null;

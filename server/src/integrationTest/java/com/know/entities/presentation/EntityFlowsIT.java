@@ -594,6 +594,234 @@ class EntityFlowsIT extends BackendIntegrationSupport {
     return result;
   }
 
+  @Test
+  void deletesEveryEntityTypeWithOwnershipAndVersionChecks() throws Exception {
+    for (var type : List.of("BOOK", "MOVIE", "TV_SHOW", "GAME")) {
+      var entity =
+          request(201, "POST", "/entities", owner, Map.of("type", type, "title", "Delete " + type));
+      var base = "/entities/" + entity.get("id").asText();
+      request(400, "DELETE", base, owner, null);
+      request(400, "DELETE", base + "?version=-1", owner, null);
+      request(404, "DELETE", base + "?version=0", other, null);
+      request(409, "DELETE", base + "?version=99", owner, null);
+      request(200, "GET", base, owner, null);
+      request(204, "DELETE", base + "?version=0", owner, null);
+      request(404, "GET", base, owner, null);
+      request(404, "DELETE", base + "?version=0", owner, null);
+    }
+  }
+
+  @Test
+  void deletingShowCleansOwnedHistoryWatchesAndReasonsButRetainsArticlesCatalogAndOtherReasons()
+      throws Exception {
+    var a = article("delete-a");
+    var b = article("delete-b");
+    var c = article("delete-c");
+    var d = article("delete-d");
+    var entity =
+        request(
+                201,
+                "POST",
+                "/articles/" + a + "/entities",
+                owner,
+                Map.of("type", "TV_SHOW", "title", "Delete show"))
+            .get("entity");
+    var id = UUID.fromString(entity.get("id").asText());
+    request(
+        200,
+        "POST",
+        "/articles/" + b + "/entities",
+        owner,
+        Map.of("type", "TV_SHOW", "title", "Delete show"));
+    var kept =
+        request(201, "POST", "/entities", owner, Map.of("type", "BOOK", "title", "Keep book"))
+            .get("id")
+            .asText();
+    var foreign =
+        request(201, "POST", "/entities", other, Map.of("type", "TV_SHOW", "title", "Other show"))
+            .get("id")
+            .asText();
+    request(201, "POST", "/entities/" + id + "/completions", owner, Map.of("version", 0));
+    jdbc.update("insert into tvmaze_shows(tvmaze_id,name) values (99001,'Shared catalog')");
+    jdbc.update(
+        "insert into tvmaze_episodes(tvmaze_id,show_id,season_number,number,episode_type,name,air_at,payload,fetched_at) values (99002,99001,1,1,'regular','Pilot',now()-interval '1 day','{}',now())");
+    for (var pair :
+        List.of(new Object[] {owner, id}, new Object[] {other, UUID.fromString(foreign)})) {
+      jdbc.update(
+          "update entities set tvmaze_id=99001 where account_id=? and id=?", pair[0], pair[1]);
+      jdbc.update(
+          "insert into entity_tv_shows(account_id,entity_id,show_id,created_at,updated_at) values (?,?,99001,now(),now())",
+          pair[0],
+          pair[1]);
+      jdbc.update(
+          "insert into entity_episode_watches(account_id,entity_id,episode_id,watched_at) values (?,?,99002,now())",
+          pair[0],
+          pair[1]);
+    }
+    var emptyConnection = connection(a, b);
+    var retainedConnection = connection(a, c);
+    var semanticConnection = connection(a, d);
+    var profile = UUID.randomUUID();
+    jdbc.update(
+        "insert into embedding_profiles(id,provider,model,dimensions,chunking_config,config_hash,matching_config_hash,created_at) values (?,'test','test',128,'{}',?,?,now())",
+        profile,
+        new byte[32],
+        new byte[32]);
+    jdbc.update(
+        "update article_connections set semantic_profile_id=?,semantic_score=0.9,low_content_hash=?,high_content_hash=? where id=?",
+        profile,
+        new byte[32],
+        new byte[32],
+        semanticConnection);
+    for (var connection : List.of(emptyConnection, retainedConnection, semanticConnection))
+      jdbc.update(
+          "insert into connection_shared_entities(account_id,connection_id,entity_id,created_at) values (?,?,?,now())",
+          owner,
+          connection,
+          id);
+    jdbc.update(
+        "insert into connection_shared_entities(account_id,connection_id,entity_id,created_at) values (?,?,?,now())",
+        owner,
+        retainedConnection,
+        UUID.fromString(kept));
+    request(409, "DELETE", "/entities/" + id + "?version=0", owner, null);
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from entity_episode_watches where entity_id=?", Integer.class, id))
+        .isEqualTo(1);
+    request(204, "DELETE", "/entities/" + id + "?version=1", owner, null);
+    for (var table :
+        List.of(
+            "entity_completions",
+            "article_entities",
+            "entity_tv_shows",
+            "entity_episode_watches",
+            "connection_shared_entities"))
+      assertThat(
+              jdbc.queryForObject(
+                  "select count(*) from " + table + " where entity_id=?", Integer.class, id))
+          .isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from article_connections where id=?",
+                Integer.class,
+                emptyConnection))
+        .isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from article_connections where id=?",
+                Integer.class,
+                retainedConnection))
+        .isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from tvmaze_episodes where tvmaze_id=99002", Integer.class))
+        .isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from entity_episode_watches where account_id=?",
+                Integer.class,
+                other))
+        .isEqualTo(1);
+    assertThat(
+            jdbc.queryForObject(
+                "select semantic_score from article_connections where id=?",
+                Double.class,
+                semanticConnection))
+        .isEqualTo(0.9);
+    for (var article : List.of(a, b, c, d))
+      request(200, "GET", "/articles/" + article, owner, null);
+    request(200, "GET", "/entities/" + kept, owner, null);
+    request(200, "GET", "/entities/" + foreign, other, null);
+  }
+
+  @Test
+  void concurrentDeleteAndEditNeverReviveAnEntityOrPartiallyDeleteIt() throws Exception {
+    var created =
+        request(201, "POST", "/entities", owner, Map.of("type", "BOOK", "title", "Race delete"));
+    var base = "/entities/" + created.get("id").asText();
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      var latch = new CountDownLatch(1);
+      var delete =
+          executor.submit(
+              () -> {
+                latch.await();
+                return exchange("DELETE", base + "?version=0", owner, null);
+              });
+      var edit =
+          executor.submit(
+              () -> {
+                latch.await();
+                return exchange("PATCH", base, owner, Map.of("version", 0, "status", "READ"));
+              });
+      latch.countDown();
+      var deletion = delete.get(30, TimeUnit.SECONDS).statusCode();
+      var editing = edit.get(30, TimeUnit.SECONDS).statusCode();
+      if (deletion == 204) {
+        assertThat(editing).isEqualTo(404);
+        request(404, "GET", base, owner, null);
+      } else {
+        assertThat(deletion).isEqualTo(409);
+        assertThat(editing).isEqualTo(200);
+        request(204, "DELETE", base + "?version=1", owner, null);
+      }
+      assertThat(
+              jdbc.queryForObject(
+                  "select count(*) from entity_completions where entity_id=?",
+                  Integer.class,
+                  UUID.fromString(created.get("id").asText())))
+          .isZero();
+    }
+  }
+
+  @Test
+  void concurrentArticleAndEntityDeletionBothFinishWithoutDependentRows() throws Exception {
+    var article = article("delete-both");
+    var entity =
+        request(
+                201,
+                "POST",
+                "/articles/" + article + "/entities",
+                owner,
+                Map.of("type", "BOOK", "title", "Delete both"))
+            .get("entity")
+            .get("id")
+            .asText();
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      var latch = new CountDownLatch(1);
+      var first =
+          executor.submit(
+              () -> {
+                latch.await();
+                return exchange("DELETE", "/entities/" + entity + "?version=0", owner, null);
+              });
+      var second =
+          executor.submit(
+              () -> {
+                latch.await();
+                return exchange("DELETE", "/articles/" + article + "?version=0", owner, null);
+              });
+      latch.countDown();
+      assertThat(first.get(30, TimeUnit.SECONDS).statusCode()).isEqualTo(204);
+      assertThat(second.get(30, TimeUnit.SECONDS).statusCode()).isEqualTo(204);
+    }
+    request(404, "GET", "/entities/" + entity, owner, null);
+    request(404, "GET", "/articles/" + article, owner, null);
+  }
+
+  private UUID connection(String a, String b) {
+    var pair = new ArrayList<>(List.of(a, b));
+    pair.sort(String::compareTo);
+    var id = UUID.randomUUID();
+    jdbc.update(
+        "insert into article_connections(id,account_id,article_low_id,article_high_id,low_revision,high_revision,evaluated_at,created_at,updated_at) values (?,?,?,?,0,0,now(),now(),now())",
+        id,
+        owner,
+        UUID.fromString(pair.get(0)),
+        UUID.fromString(pair.get(1)));
+    return id;
+  }
+
   private JsonNode request(int status, String method, String path, UUID account, Object data)
       throws Exception {
     var response = exchange(method, path, account, data);

@@ -1,4 +1,5 @@
 import type { EntitySummary } from "./model";
+import { exactCaptureTime } from "../timeline/dates";
 import { useId } from "react";
 import { shortDate, statusLabel, types } from "./model";
 import styles from "./Entities.module.css";
@@ -69,7 +70,13 @@ export function EntityTable({
                 )}
               </button>
               <small className={styles.mobileCreated}>
-                Created {shortDate(entity.createdAt)}
+                Created{" "}
+                <time
+                  dateTime={entity.createdAt}
+                  title={exactCaptureTime(entity.createdAt)}
+                >
+                  {shortDate(entity.createdAt)}
+                </time>
               </small>
             </td>
             {!grouped && (
@@ -78,7 +85,10 @@ export function EntityTable({
               </td>
             )}
             <td className={`${styles.date} ${styles.createdColumn}`}>
-              <time dateTime={entity.createdAt}>
+              <time
+                dateTime={entity.createdAt}
+                title={exactCaptureTime(entity.createdAt)}
+              >
                 {shortDate(entity.createdAt)}
               </time>
             </td>

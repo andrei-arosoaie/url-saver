@@ -71,6 +71,9 @@ public class TvController {
   }
 
   @GetMapping("/entities/{id}/tv-show")
+  @io.swagger.v3.oas.annotations.responses.ApiResponse(
+      responseCode = "200",
+      description = "Owned TV details, released-episode progress and poster sources.")
   public Details details(@PathVariable UUID id) {
     return service.read(id);
   }

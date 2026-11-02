@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { tvRequest, type Candidate, type Search } from "./tvApi";
 import styles from "./Entities.module.css";
 
@@ -16,6 +16,7 @@ export function TvAutocomplete({
   disabled?: boolean;
 }) {
   const id = useId();
+  const list = useRef<HTMLUListElement>(null);
   const [settings, setSettings] = useState<{
     minimumCharacters: number;
     debounceMs: number;
@@ -85,6 +86,10 @@ export function TvAutocomplete({
     };
   }, [value, selected, settings]);
   const items = results?.items.slice(0, visible) ?? [];
+  useEffect(() => {
+    if (active >= 0)
+      list.current?.children[active]?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
   function choose(candidate: Candidate) {
     onChange(candidate.name);
     onSelect(candidate);
@@ -132,7 +137,12 @@ export function TvAutocomplete({
       />
       {state && <p role="status">{state}</p>}
       {items.length > 0 && (
-        <ul id={id + "-list"} role="listbox" aria-label="Show matches">
+        <ul
+          ref={list}
+          id={id + "-list"}
+          role="listbox"
+          aria-label="Show matches"
+        >
           {items.map((candidate, index) => (
             <li
               id={`${id}-${index}`}

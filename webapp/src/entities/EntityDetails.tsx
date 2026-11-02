@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EntityApi } from "./api";
 import { requiresReload } from "./api";
-import { types, statusLabel, type Entity } from "./model";
+import { types, shortDate, statusLabel, type Entity } from "./model";
 import { usePage } from "./usePage";
 import { CompletionHistory } from "./CompletionHistory";
 import { exactCaptureTime } from "../timeline/dates";
 import styles from "./Entities.module.css";
+import { DeleteEntity } from "./DeleteEntity";
 import { TvDetails } from "./TvDetails";
 
 export function EntityDetails({
@@ -14,6 +15,7 @@ export function EntityDetails({
   revision,
   onChanged,
   onBack,
+  onDeleted,
   onOpenArticle,
   focus = false,
 }: {
@@ -22,6 +24,7 @@ export function EntityDetails({
   revision: number;
   onChanged: () => void;
   onBack: () => void;
+  onDeleted: () => void;
   onOpenArticle: (id: string) => void;
   focus?: boolean;
 }) {
@@ -134,10 +137,12 @@ export function EntityDetails({
       )}
       {entity && config && (
         <>
-          <h3>
-            {config.singular[0].toUpperCase() + config.singular.slice(1)}{" "}
-            details
-          </h3>
+          {entity.type !== "TV_SHOW" && (
+            <h3>
+              {config.singular[0].toUpperCase() + config.singular.slice(1)}{" "}
+              details
+            </h3>
+          )}
           {entity.type === "TV_SHOW" && (
             <TvDetails
               entity={entity}
@@ -165,9 +170,9 @@ export function EntityDetails({
                 <time
                   className={styles.createdValue}
                   dateTime={entity.createdAt}
-                  title={entity.createdAt}
+                  title={exactCaptureTime(entity.createdAt)}
                 >
-                  {exactCaptureTime(entity.createdAt)}
+                  {shortDate(entity.createdAt)}
                 </time>
               </label>
               <label>
@@ -204,6 +209,13 @@ export function EntityDetails({
               </div>
             </form>
           </Disclosure>
+          <DeleteEntity
+            disabled={blocked}
+            entity={entity}
+            remove={api.remove}
+            onDeleted={onDeleted}
+            onReload={refresh}
+          />
           <CompletionHistory
             key={entity.id}
             entity={entity}

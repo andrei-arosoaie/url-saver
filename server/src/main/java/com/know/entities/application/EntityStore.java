@@ -15,6 +15,8 @@ public interface EntityStore {
 
   Optional<Details> find(UUID owner, UUID id);
 
+  List<UUID> delete(UUID owner, UUID id);
+
   Optional<Details> findExact(UUID owner, EntityType type, String title);
 
   Details insert(UUID owner, Create command, Instant now);

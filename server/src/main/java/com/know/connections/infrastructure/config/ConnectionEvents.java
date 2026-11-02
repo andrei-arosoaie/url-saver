@@ -36,6 +36,11 @@ public class ConnectionEvents {
     store.delete(event.accountId(), event.articleId());
   }
 
+  @EventListener
+  public void deletingEntity(EntityDeleting event) {
+    store.deleteEntity(event.accountId(), event.entityId());
+  }
+
   private void change(UUID owner, UUID article) {
     store.changed(
         owner, article, policy.enabled() ? profiles.current() : null, clock.instant(), true);

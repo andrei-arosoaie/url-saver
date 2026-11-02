@@ -95,7 +95,7 @@ export function CompletionHistory({
           }}
         >
           <CompletionDateInput
-            label="Completed at (UTC)"
+            label="Completed at (local time)"
             value={time}
             onChange={setTime}
             disabled={blocked}
@@ -190,7 +190,7 @@ function HistoryEvent({
           }}
         >
           <CompletionDateInput
-            label="Correct completed at (UTC)"
+            label="Correct completed at (local time)"
             value={value}
             onChange={setValue}
             disabled={blocked}
@@ -203,7 +203,11 @@ function HistoryEvent({
             <button
               className={styles.textAction}
               type="button"
-              onClick={() => setEditing(false)}
+              onClick={() => {
+                setEditing(false);
+                setValue(utcInput(event.completedAt));
+                setError("");
+              }}
             >
               Cancel
             </button>

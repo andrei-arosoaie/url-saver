@@ -211,10 +211,22 @@ try {
     `Array.from(document.querySelectorAll('label')).find(e=>e.textContent.includes('E4 ·')).querySelector('input').click()`,
   );
   await until(
-    `document.querySelector('[aria-label="Viewing progress"]')?.textContent.includes('3 watched / 3 aired')`,
+    `document.querySelector('[aria-label="Viewing progress"]')?.textContent.includes('3 / 3 released episodes watched')`,
   );
   assert.equal((await details(flagged.id)).newEpisodesAvailable, false);
-  await click("Mark show seen");
+  assert.equal(
+    await evaluate(
+      "Array.from(document.querySelectorAll('legend')).some(e=>e.textContent==='Last watched')",
+    ),
+    false,
+  );
+  assert.equal(
+    await evaluate(
+      "Array.from(document.querySelectorAll('button')).some(e=>e.textContent.trim()==='Mark show seen')",
+    ),
+    false,
+  );
+  await click("＋ Add completion");
   await until(
     `document.querySelector('[aria-label="Completion history"] h4')?.textContent.includes('(2)')`,
   );

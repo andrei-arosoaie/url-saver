@@ -174,7 +174,7 @@ function fixture(start: Details = initial) {
                   number: 1,
                   name: null,
                   regularEpisodeCount: 3,
-                  airedCount: 1,
+                  airedCount: data.airedCount,
                   watchedCount: data.watchedCount,
                 },
                 {
@@ -210,6 +210,9 @@ function fixture(start: Details = initial) {
     mutations,
     fetcher,
     rerender: rendered.rerender,
+    setData: (fresh: Details) => {
+      data = structuredClone(fresh);
+    },
     loadCatalog: () => {
       data = structuredClone(initial);
     },
@@ -329,13 +332,9 @@ it("keeps position separate, confirms bulk marking and disables seasons without 
 it("excludes fully watched seasons and watched episodes from Last watched but retains the episode browser", async () => {
   fixture({ ...initial, watchedCount: 1, canMarkSeen: true });
   await screen.findByText("Show · My label");
-  await screen.findByText("All released episodes are watched.");
-  expect(
-    within(screen.getByLabelText("Season")).queryByText("Season 1"),
-  ).toBeNull();
-  expect(
-    within(screen.getByLabelText("Season")).queryByText("Season 2"),
-  ).toBeNull();
+  await screen.findByText("Caught up with all released episodes");
+  expect(screen.queryByRole("group", { name: "Last watched" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Mark show seen" })).toBeNull();
   fireEvent.click(screen.getByText(/Episodes · Season/));
   expect(
     within(screen.getByLabelText("Browse season")).getByText("Season 1"),
@@ -386,4 +385,19 @@ it("requires review and confirmation before replacing a show and supports cancel
     version: 0,
     entityVersion: 0,
   });
+});
+
+it("restores Last watched and updates progress when a new released episode arrives", async () => {
+  const { rerender, setData } = fixture({
+    ...initial,
+    watchedCount: 1,
+    canMarkSeen: true,
+  });
+  await screen.findByText("Caught up with all released episodes");
+  expect(screen.queryByRole("group", { name: "Last watched" })).toBeNull();
+  setData({ ...initial, watchedCount: 1, airedCount: 2 });
+  rerender(<TvDetails entity={entity} revision={1} onChanged={vi.fn()} />);
+  await screen.findByText("1 episode left to catch up");
+  expect(screen.getByRole("group", { name: "Last watched" })).toBeTruthy();
+  expect(screen.getByText("50%")).toBeTruthy();
 });

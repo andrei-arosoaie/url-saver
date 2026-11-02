@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { exactCaptureTime } from "../timeline/dates";
 import { entityApi, requiresReload, type EntityApi } from "./api";
 import {
   types,
@@ -40,7 +41,8 @@ export function EntitiesPage({
     [yearRetry, setYearRetry] = useState(0),
     [busyId, setBusyId] = useState<string | null>(null),
     [writeError, setWriteError] = useState<unknown>(null),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [deleted, setDeleted] = useState<Set<string>>(() => new Set());
   const write = useRef<AbortController | null>(null);
   const config = types[route.type];
   const load = useCallback(
@@ -114,7 +116,10 @@ export function EntitiesPage({
       if (!controller.signal.aborted) setBusyId(null);
     }
   }
-  const selected = route.id ?? page.items[0]?.id ?? null;
+  const selected =
+    (route.id && !deleted.has(route.id) ? route.id : null) ??
+    page.items.find((item) => !deleted.has(item.id))?.id ??
+    null;
   const yearOptions = [
     ...new Set([
       ...years.map((y) => String(y.year)),
@@ -194,7 +199,9 @@ export function EntitiesPage({
           )}
         </div>
       )}
-      <div className={styles.workspace}>
+      <div
+        className={`${styles.workspace} ${route.type === "TV_SHOW" ? styles.tvWorkspace : ""}`}
+      >
         <div className={styles.collection}>
           {route.view === "year" ? (
             <>
@@ -226,6 +233,7 @@ export function EntitiesPage({
                   <YearGroup
                     key={`${route.type}:${year.year}:${revision}`}
                     year={year}
+                    deleted={deleted}
                     route={route}
                     api={api}
                     onSelect={open}
@@ -245,7 +253,7 @@ export function EntitiesPage({
               )}
               {route.view === "table" ? (
                 <EntityTable
-                  items={page.items}
+                  items={page.items.filter((item) => !deleted.has(item.id))}
                   selected={selected}
                   onSelect={open}
                 />
@@ -257,7 +265,9 @@ export function EntitiesPage({
                   }
                 >
                   {config.statuses.map((status) => {
-                    const cards = page.items.filter((e) => e.status === status);
+                    const cards = page.items.filter(
+                      (e) => e.status === status && !deleted.has(e.id),
+                    );
                     return (
                       <section key={status} className={styles.boardColumn}>
                         <h3>
@@ -287,7 +297,15 @@ export function EntitiesPage({
                               </span>
                             </button>
                             <TvCompact entity={entity} />
-                            <p>Created: {shortDate(entity.createdAt)}</p>
+                            <p>
+                              Created:{" "}
+                              <time
+                                dateTime={entity.createdAt}
+                                title={exactCaptureTime(entity.createdAt)}
+                              >
+                                {shortDate(entity.createdAt)}
+                              </time>
+                            </p>
                             {entity.latestMatchingCompletionAt && (
                               <p>
                                 {config.date}:{" "}
@@ -346,6 +364,12 @@ export function EntitiesPage({
             api={api}
             revision={revision}
             onChanged={changed}
+            onDeleted={() => {
+              setDeleted((ids) => new Set([...ids, selected]));
+              navigate({ ...route, id: null });
+              setRevision((n) => n + 1);
+              setNotice("Entity deleted.");
+            }}
             onBack={() => navigate({ ...route, id: null })}
             onOpenArticle={onOpenArticle}
           />
@@ -392,12 +416,14 @@ export function EntitiesPage({
   );
 }
 function YearGroup({
+  deleted,
   year,
   route,
   api,
   selected,
   onSelect,
 }: {
+  deleted: Set<string>;
   year: CompletionYear;
   route: EntityRoute;
   api: EntityApi;
@@ -425,7 +451,7 @@ function YearGroup({
         </small>
       </summary>
       <EntityTable
-        items={page.items}
+        items={page.items.filter((item) => !deleted.has(item.id))}
         selected={selected}
         onSelect={onSelect}
         grouped

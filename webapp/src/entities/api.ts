@@ -42,6 +42,7 @@ export interface EntityApi {
     signal: AbortSignal,
   ): Promise<Page<EntitySummary>>;
   read(id: string, signal: AbortSignal): Promise<Entity>;
+  remove(entity: Entity, signal: AbortSignal): Promise<void>;
   years(
     type: EntityType,
     query: string,
@@ -303,6 +304,16 @@ export const entityApi: EntityApi = {
       signal,
       [200],
       isEntity,
+    );
+  },
+  remove(entity, signal) {
+    return send(
+      "DELETE",
+      "/entities/" + id(entity.id) + "?version=" + entity.version,
+      undefined,
+      signal,
+      [204],
+      (v): v is void => v === undefined,
     );
   },
   history(entity, bookmark, signal) {

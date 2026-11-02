@@ -54,6 +54,7 @@ export function fixture(type: EntityType = "BOOK") {
       ],
       nextCursor: null,
     }),
+    remove: vi.fn<EntityApi["remove"]>().mockResolvedValue(undefined),
     read: vi.fn<EntityApi["read"]>().mockResolvedValue(entity),
     years: vi
       .fn<EntityApi["years"]>()
@@ -245,11 +246,16 @@ it("uses exact event versions and UTC timestamps for history corrections and del
     await screen.findByRole("button", { name: "Edit timestamp" }),
   );
   expect(
-    (screen.getByLabelText("Correct completed at (UTC)") as HTMLInputElement)
-      .type,
+    (
+      screen.getByLabelText(
+        "Correct completed at (local time)",
+      ) as HTMLInputElement
+    ).type,
   ).toBe("datetime-local");
   fireEvent.change(
-    screen.getByLabelText("Exact timestamp for Correct completed at (UTC)"),
+    screen.getByLabelText(
+      "Exact timestamp for Correct completed at (local time)",
+    ),
     {
       target: { value: "2025-12-31T23:59:59.123456" },
     },
@@ -380,4 +386,49 @@ it("ignores an old type's delayed response and preserves type-specific status ch
     }),
   );
   expect(screen.queryByRole("button", { name: /A real book/ })).toBeNull();
+});
+
+it("removes a confirmed deleted entity from the list and details", async () => {
+  const api = fixture();
+  render(<Harness api={api} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Delete entity" }));
+  expect(api.remove).not.toHaveBeenCalled();
+  api.list.mockResolvedValue({ items: [], nextCursor: null });
+  fireEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
+  await screen.findByText("Entity deleted.");
+  expect(screen.queryByLabelText("Entity details")).toBeNull();
+  expect(screen.queryByRole("button", { name: /A real book/ })).toBeNull();
+  expect(api.remove).toHaveBeenCalledWith(
+    expect.objectContaining({ id: baseEntity.id, version: baseEntity.version }),
+    expect.any(AbortSignal),
+  );
+});
+
+it("saving an unchanged completion timestamp preserves microsecond precision", async () => {
+  const api = fixture();
+  const timestamp = "2025-11-01T13:20:52.763155Z";
+  api.history.mockResolvedValue({
+    items: [
+      {
+        id: "00000000-0000-4000-8000-000000000099",
+        entityId: baseEntity.id,
+        completedAt: timestamp,
+        createdAt: timestamp,
+        version: 0,
+      },
+    ],
+    nextCursor: null,
+  });
+  render(<Harness api={api} />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Edit timestamp" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save timestamp" }));
+  await waitFor(() =>
+    expect(api.correct).toHaveBeenCalledWith(
+      expect.anything(),
+      timestamp,
+      expect.any(AbortSignal),
+    ),
+  );
 });
