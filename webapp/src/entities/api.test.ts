@@ -140,3 +140,19 @@ it("keeps exact UTC microseconds and route filters through view/detail navigatio
   expect(() => fromUtcInput("2025-02-30T12:00:00")).toThrow();
   expect(entityRoute("#entities/__proto__/table").type).toBe("BOOK");
 });
+
+it("deletes only the expected entity version and requires a confirmed 204 response", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(new Response(null, { status: 204 }));
+  vi.stubGlobal("fetch", fetcher);
+  await entityApi.remove(entity, signal());
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v1/entities/" + entity.id + "?version=3",
+    expect.objectContaining({ method: "DELETE" }),
+  );
+  fetcher.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+  await expect(entityApi.remove(entity, signal())).rejects.toMatchObject({
+    uncertain: true,
+  });
+});

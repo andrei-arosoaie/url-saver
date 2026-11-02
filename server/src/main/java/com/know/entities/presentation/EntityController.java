@@ -80,6 +80,20 @@ public class EntityController {
     return mapper.toResponse(service.edit(id, mapper.toCommand(request)));
   }
 
+  @DeleteMapping("/{id}")
+  @ApiResponse(
+      responseCode = "204",
+      description = "Entity and its owned history and associations deleted; articles retained.")
+  @Operation(
+      operationId = "deleteEntity",
+      summary = "Delete an owned entity",
+      description =
+          "Expected non-negative version required. Stale writes return 409; missing and foreign entities return 404. Deletes viewing progress and connection reasons atomically, preserving articles and shared catalogs.")
+  public ResponseEntity<Void> delete(@PathVariable UUID id, @RequestParam Long version) {
+    service.delete(id, version);
+    return ResponseEntity.noContent().build();
+  }
+
   @GetMapping("/years")
   @ApiResponse(responseCode = "200", description = "Successful owned response.")
   @Operation(

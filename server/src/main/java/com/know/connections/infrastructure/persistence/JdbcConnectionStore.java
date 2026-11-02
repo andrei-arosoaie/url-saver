@@ -106,6 +106,10 @@ public class JdbcConnectionStore implements ConnectionStore {
     pairs.remove(owner, source, other, now);
   }
 
+  public void deleteEntity(UUID owner, UUID entity) {
+    pairs.deleteEntity(owner, entity);
+  }
+
   public void delete(UUID owner, UUID source) {
     pairs.delete(owner, source);
   }

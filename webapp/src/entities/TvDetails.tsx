@@ -11,6 +11,9 @@ import {
   type Episode,
 } from "./tvApi";
 import styles from "./Entities.module.css";
+import { PosterPreview } from "./PosterPreview";
+import { Status } from "./EntityTable";
+import { exactCaptureTime, timelineDate } from "../timeline/dates";
 import { ViewingProgress } from "./ViewingProgress";
 
 export function TvDetails({
@@ -184,6 +187,11 @@ export function TvDetails({
     }
   }
   const blocked = busy || requiresReload(error);
+  const allReleasedWatched =
+    data != null &&
+    data.metadata.fetchedAt !== null &&
+    data.airedCount > 0 &&
+    data.watchedCount >= data.airedCount;
   const selectedSeason = seasons.find((s) => String(s.id) === season);
   return (
     <section className={styles.tvDetails} aria-label="Viewing progress">
@@ -199,29 +207,66 @@ export function TvDetails({
       {data && (
         <>
           <header className={styles.tvHeader}>
-            {data.show?.posterUrl && <img src={data.show.posterUrl} alt="" />}
-            <div>
+            {data.show?.posterUrl && (
+              <PosterPreview
+                src={data.show.posterUrl}
+                originalSrc={data.show.originalPosterUrl}
+                title={data.canonicalTitle}
+              />
+            )}
+            <div className={styles.tvHeading}>
+              <span className={styles.typeEyebrow}>TV SHOW</span>
               <h4>
                 {data.canonicalTitle}
                 {data.alias ? ` · ${data.alias}` : ""}
               </h4>
-              <p>{data.show?.genres.join(" · ")}</p>
-              <p>
-                {data.show?.providerStatus}
-                {data.show?.averageRuntime
-                  ? ` · ${data.show.averageRuntime} min`
-                  : ""}
+              <p className={styles.tvMetadata}>
+                {[
+                  data.show?.premiereYear,
+                  ...(data.show?.genres ?? []),
+                  data.show?.providerStatus,
+                  data.show?.averageRuntime
+                    ? data.show.averageRuntime + " min"
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
-              {data.show?.tvmazeRating != null && (
-                <p>Rating: {data.show.tvmazeRating}/10</p>
-              )}
-              {data.show?.imdbUrl && (
-                <a href={data.show.imdbUrl} target="_blank" rel="noreferrer">
-                  IMDb ↗
-                </a>
-              )}
+              <div className={styles.tvRatingRow}>
+                {data.show?.tvmazeRating != null && (
+                  <p>
+                    Rating: {data.show.tvmazeRating}/10{" "}
+                    <a
+                      className={styles.ratingSource}
+                      href={`https://www.tvmaze.com/shows/${data.tvmazeId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="Rating source: TVMaze"
+                    >
+                      TVMaze
+                    </a>
+                  </p>
+                )}
+                {data.show?.imdbUrl && (
+                  <a href={data.show.imdbUrl} target="_blank" rel="noreferrer">
+                    IMDb ↗
+                  </a>
+                )}
+              </div>
             </div>
           </header>
+          <div className={styles.tvStatusRow}>
+            <Status entity={{ type: "TV_SHOW", status: data.status }} />
+            <span>
+              Added{" "}
+              <time
+                dateTime={entity.createdAt}
+                title={exactCaptureTime(entity.createdAt)}
+              >
+                {timelineDate(entity.createdAt)}
+              </time>
+            </span>
+          </div>
           {data.metadata.state !== "READY" && (
             <p role="status">
               {data.metadata.fetchedAt
@@ -263,105 +308,111 @@ export function TvDetails({
                 ? `Episode ${data.lastWatchedEpisodeId}`
                 : "Not set")}{" "}
           </p>
-          <fieldset
-            disabled={
-              blocked || !seasons.some((s) => s.airedCount > s.watchedCount)
-            }
-          >
-            <legend>Last watched</legend>
-            <label>
-              Season
-              <select
-                value={positionSeason}
-                onChange={(event) => {
-                  setPositionSeason(event.target.value);
-                  setPositionEpisodes([]);
-                  setEpisode("");
-                }}
+          {!allReleasedWatched && (
+            <>
+              <fieldset
+                disabled={
+                  blocked || !seasons.some((s) => s.airedCount > s.watchedCount)
+                }
               >
-                <option value="">
-                  {!seasons.length && !data.metadata.fetchedAt
-                    ? "Loading seasons…"
-                    : "Choose season"}
-                </option>
-                {seasons
-                  .filter((s) => s.airedCount > s.watchedCount)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      Season {s.number}
+                <legend>Last watched</legend>
+                <label>
+                  Season
+                  <select
+                    value={positionSeason}
+                    onChange={(event) => {
+                      setPositionSeason(event.target.value);
+                      setPositionEpisodes([]);
+                      setEpisode("");
+                    }}
+                  >
+                    <option value="">
+                      {!seasons.length && !data.metadata.fetchedAt
+                        ? "Loading seasons…"
+                        : "Choose season"}
                     </option>
-                  ))}
-              </select>
-            </label>
-            <label>
-              Episode
-              <select
-                disabled={!positionEpisodes.length}
-                value={episode}
-                onChange={(event) => setEpisode(event.target.value)}
+                    {seasons
+                      .filter((s) => s.airedCount > s.watchedCount)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          Season {s.number}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Episode
+                  <select
+                    disabled={!positionEpisodes.length}
+                    value={episode}
+                    onChange={(event) => setEpisode(event.target.value)}
+                  >
+                    <option value="">
+                      {positionSeason && !positionEpisodes.length
+                        ? "No unwatched released episodes"
+                        : "Choose episode"}
+                    </option>
+                    {positionEpisodes.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.number ?? "?"} · {e.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className={styles.action}
+                  disabled={
+                    !episode ||
+                    !positionEpisodes.some((e) => String(e.id) === episode)
+                  }
+                  onClick={() =>
+                    void mutate("/position", "PATCH", {
+                      version: data.version,
+                      episodeId: Number(episode),
+                      markPreviousWatched: false,
+                    })
+                  }
+                >
+                  Save position only
+                </button>
+                <button
+                  type="button"
+                  className={styles.action}
+                  disabled={
+                    !episode ||
+                    !positionEpisodes.some((e) => String(e.id) === episode)
+                  }
+                  onClick={() => setConfirmation("bulk")}
+                >
+                  Save and mark previous watched…
+                </button>
+              </fieldset>
+              {seasons.length > 0 &&
+                !seasons.some((s) => s.airedCount > s.watchedCount) && (
+                  <p className={styles.progressNote}>
+                    {data.airedCount > 0
+                      ? "All released episodes are watched."
+                      : "No released episodes to select yet."}
+                  </p>
+                )}
+              <button
+                type="button"
+                className={styles.action}
+                disabled={
+                  blocked || !data.canMarkSeen || data.status === "SEEN"
+                }
+                onClick={() =>
+                  void mutate("/mark-seen", "POST", {
+                    version: data.version,
+                    entityVersion: data.entityVersion,
+                  })
+                }
               >
-                <option value="">
-                  {positionSeason && !positionEpisodes.length
-                    ? "No unwatched released episodes"
-                    : "Choose episode"}
-                </option>
-                {positionEpisodes.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.number ?? "?"} · {e.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className={styles.action}
-              disabled={
-                !episode ||
-                !positionEpisodes.some((e) => String(e.id) === episode)
-              }
-              onClick={() =>
-                void mutate("/position", "PATCH", {
-                  version: data.version,
-                  episodeId: Number(episode),
-                  markPreviousWatched: false,
-                })
-              }
-            >
-              Save position only
-            </button>
-            <button
-              type="button"
-              className={styles.action}
-              disabled={
-                !episode ||
-                !positionEpisodes.some((e) => String(e.id) === episode)
-              }
-              onClick={() => setConfirmation("bulk")}
-            >
-              Save and mark previous watched…
-            </button>
-          </fieldset>
-          {seasons.length > 0 &&
-            !seasons.some((s) => s.airedCount > s.watchedCount) && (
-              <p className={styles.progressNote}>
-                {data.airedCount > 0
-                  ? "All released episodes are watched."
-                  : "No released episodes to select yet."}
-              </p>
-            )}
-          <button
-            type="button"
-            className={styles.action}
-            disabled={blocked || !data.canMarkSeen || data.status === "SEEN"}
-            onClick={() =>
-              void mutate("/mark-seen", "POST", {
-                version: data.version,
-                entityVersion: data.entityVersion,
-              })
-            }
-          >
-            Mark show seen
-          </button>
+                Mark show seen
+              </button>
+            </>
+          )}
           <details>
             <summary>
               Episodes · Season {selectedSeason?.number ?? "—"} ·{" "}

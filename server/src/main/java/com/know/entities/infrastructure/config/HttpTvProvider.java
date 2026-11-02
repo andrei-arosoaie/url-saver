@@ -108,7 +108,8 @@ public class HttpTvProvider implements TvProvider {
             show.tvmazeRating(),
             show.imdbUrl(),
             next,
-            show.premiereYear()),
+            show.premiereYear(),
+            show.originalPosterUrl()),
         seasons,
         episodes);
   }
@@ -131,7 +132,8 @@ public class HttpTvProvider implements TvProvider {
             ? "https://www.imdb.com/title/" + imdb + "/"
             : null,
         null,
-        text(s, "premiered") == null ? null : LocalDate.parse(text(s, "premiered")).getYear());
+        text(s, "premiered") == null ? null : LocalDate.parse(text(s, "premiered")).getYear(),
+        originalImage(s));
   }
 
   private JsonNode get(String path) {
@@ -207,6 +209,11 @@ public class HttpTvProvider implements TvProvider {
   private static Integer integer(JsonNode n, String key) {
     var v = n.path(key);
     return v.isInt() ? v.asInt() : null;
+  }
+
+  private static String originalImage(JsonNode n) {
+    var url = text(n.path("image"), "original");
+    return url != null && url.startsWith("https://") ? url : null;
   }
 
   private static String image(JsonNode n) {

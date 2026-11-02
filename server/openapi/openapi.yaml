@@ -1265,6 +1265,64 @@ paths:
       tags:
       - Entities
   /api/v1/entities/{id}:
+    delete:
+      description: "Expected non-negative version required. Stale writes return 409;\
+        \ missing and foreign entities return 404. Deletes viewing progress and connection\
+        \ reasons atomically, preserving articles and shared catalogs."
+      operationId: deleteEntity
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: version
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Entity and its owned history and associations deleted; articles
+            retained.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: INVALID_REQUEST or INVALID_ENTITY_STATUS; no partial changes.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNAUTHENTICATED when temporary account mode is disabled.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: RESOURCE_NOT_FOUND for a missing or foreign-owned parent/record;
+            no ownership disclosure.
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: VERSION_CONFLICT requires reload; DUPLICATE_ENTITY includes
+            existingEntityId. No automatic overwrite.
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unexpected failure; ENTITY_TITLE_HASH_COLLISION never reuses
+            a different full title.
+      summary: Delete an owned entity
+      tags:
+      - Entities
     get:
       description: Missing and foreign-owned resources both return 404 RESOURCE_NOT_FOUND.
       operationId: getEntity
@@ -1719,6 +1777,12 @@ paths:
           type: string
           format: uuid
       responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Details"
+          description: "Owned TV details, released-episode progress and poster sources."
         "400":
           content:
             application/json:
@@ -2688,6 +2752,44 @@ components:
         tvmazeId:
           type: integer
           format: int64
+    Details:
+      type: object
+      properties:
+        airedCount:
+          type: integer
+          format: int64
+        alias:
+          type: string
+        canMarkSeen:
+          type: boolean
+        canonicalTitle:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        entityVersion:
+          type: integer
+          format: int64
+        lastWatchedEpisodeId:
+          type: integer
+          format: int64
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+        newEpisodesAvailable:
+          type: boolean
+        show:
+          $ref: "#/components/schemas/Show"
+        status:
+          type: string
+        tvmazeId:
+          type: integer
+          format: int64
+        version:
+          type: integer
+          format: int64
+        watchedCount:
+          type: integer
+          format: int64
     EditCategoryRequest:
       type: object
       additionalProperties: false
@@ -2888,6 +2990,43 @@ components:
       - totalCompletionCount
       - type
       - version
+    Episode:
+      type: object
+      properties:
+        airAt:
+          type: string
+          format: date-time
+        airDate:
+          type: string
+          format: date
+        canMarkWatched:
+          type: boolean
+        id:
+          type: integer
+          format: int64
+        imageUrl:
+          type: string
+        number:
+          type: integer
+          format: int32
+        runtime:
+          type: integer
+          format: int32
+        season:
+          type: integer
+          format: int32
+        seasonId:
+          type: integer
+          format: int64
+        showId:
+          type: integer
+          format: int64
+        summary:
+          type: string
+        title:
+          type: string
+        watched:
+          type: boolean
     IdentificationResponse:
       type: object
       properties:
@@ -3001,6 +3140,17 @@ components:
       - totalCompletionCount
       - type
       - version
+    Metadata:
+      type: object
+      properties:
+        fetchedAt:
+          type: string
+          format: date-time
+        nextAttemptAt:
+          type: string
+          format: date-time
+        state:
+          type: string
     PositionRequest:
       type: object
       properties:
@@ -3154,6 +3304,39 @@ components:
         version:
           type: integer
           format: int64
+    Show:
+      type: object
+      properties:
+        averageRuntime:
+          type: integer
+          format: int32
+        genres:
+          type: array
+          items:
+            type: string
+        imdbUrl:
+          type: string
+        name:
+          type: string
+        nextEpisode:
+          $ref: "#/components/schemas/Episode"
+        originalPosterUrl:
+          type: string
+        posterUrl:
+          type: string
+        premiereYear:
+          type: integer
+          format: int32
+        providerStatus:
+          type: string
+        summary:
+          type: string
+        tvmazeId:
+          type: integer
+          format: int64
+        tvmazeRating:
+          type: number
+          format: double
     SourceArticleResponse:
       type: object
       properties:

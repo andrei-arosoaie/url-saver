@@ -1,3 +1,4 @@
+import { timelineDate } from "../timeline/dates";
 import type { components } from "../generated/api";
 export type Entity = components["schemas"]["EntityResponse"];
 export type EntitySummary = components["schemas"]["EntitySummaryResponse"];
@@ -86,13 +87,7 @@ export function entityHash(route: EntityRoute) {
   return `#entities/${route.type}/${route.view}${route.id ? "/" + route.id : ""}${params.size ? "?" + params : ""}`;
 }
 export function shortDate(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat(undefined, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(value))
-    : "—";
+  return value ? timelineDate(value) : "—";
 }
 export function utcInput(value: string) {
   return value.replace(/Z$/, "");

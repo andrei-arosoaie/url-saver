@@ -30,8 +30,11 @@ class HttpTvProviderTest {
                         + " title\",\"premiered\":\"2001-01-01\"}},{\"show\":{\"id\":2,\"name\":\"Same"
                         + " title\",\"premiered\":\"2020-01-01\"}}]";
                 case "/shows/1" ->
-                    "{\"id\":1,\"name\":\"Same"
-                        + " title\",\"summary\":\"<p>Story<script>bad()</script></p>\",\"genres\":[\"Drama\"],\"rating\":{\"average\":8.5},\"externals\":{\"imdb\":\"tt12345\"}}";
+                    """
+                    {"id":1,"name":"Same title","summary":"<p>Story<script>bad()</script></p>",
+                    "genres":["Drama"],"rating":{"average":8.5},"externals":{"imdb":"tt12345"},
+                    "image":{"medium":"https://images.test/medium.jpg","original":"https://images.test/original.jpg"}}
+                    """;
                 case "/shows/1/seasons" -> "[{\"id\":100,\"number\":1}]";
                 case "/shows/1/episodes" ->
                     "[{\"id\":1001,\"season\":1,\"number\":1,\"name\":\"Pilot\",\"type\":\"regular\",\"airstamp\":null,\"airdate\":null},{\"id\":1002,\"season\":1,\"number\":null,\"name\":\"Special\",\"type\":\"significant_special\"}]";
@@ -55,6 +58,8 @@ class HttpTvProviderTest {
       var catalog = provider.catalog(1);
       assertThat(catalog.show().summary()).isEqualTo("Story");
       assertThat(catalog.show().tvmazeRating()).isEqualTo(8.5);
+      assertThat(catalog.show().originalPosterUrl()).isEqualTo("https://images.test/original.jpg");
+      assertThat(catalog.show().posterUrl()).isEqualTo("https://images.test/medium.jpg");
       assertThat(catalog.show().imdbUrl()).isEqualTo("https://www.imdb.com/title/tt12345/");
       assertThat(catalog.episodes()).hasSize(1);
       assertThat(catalog.episodes().getFirst().airAt()).isNull();

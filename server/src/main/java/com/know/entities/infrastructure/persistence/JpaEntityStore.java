@@ -79,6 +79,30 @@ public class JpaEntityStore implements EntityStore {
         .getSingleResult();
   }
 
+  public List<UUID> delete(UUID owner, UUID id) {
+    em.flush();
+    var articles =
+        em.createNativeQuery(
+                "select article_id from article_entities where account_id=:owner and entity_id=:id order by article_id",
+                UUID.class)
+            .setParameter("owner", owner)
+            .setParameter("id", id)
+            .getResultList();
+    for (var table :
+        List.of(
+            "entity_episode_watches", "entity_tv_shows", "entity_completions", "article_entities"))
+      em.createNativeQuery("delete from " + table + " where account_id=:owner and entity_id=:id")
+          .setParameter("owner", owner)
+          .setParameter("id", id)
+          .executeUpdate();
+    em.createNativeQuery("delete from entities where account_id=:owner and id=:id")
+        .setParameter("owner", owner)
+        .setParameter("id", id)
+        .executeUpdate();
+    em.clear();
+    return articles;
+  }
+
   public Optional<Details> find(UUID owner, UUID id) {
     return entities.findByIdAndAccountId(id, owner).map(e -> detail(owner, e));
   }

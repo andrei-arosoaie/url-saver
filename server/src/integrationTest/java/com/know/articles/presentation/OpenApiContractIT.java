@@ -98,6 +98,18 @@ class OpenApiContractIT extends BackendIntegrationSupport {
         .isTrue();
     assertThat(paths.get("/api/v1/entities/{id}").get("get").get("responses").has("404")).isTrue();
     assertThat(paths.get("/api/v1/entities/{id}/completions/{eventId}").has("delete")).isTrue();
+    assertThat(paths.path("/api/v1/entities/{id}").path("delete").path("responses").has("204"))
+        .isTrue();
+    assertThat(paths.path("/api/v1/entities/{id}/tv-show").path("get").path("responses").has("200"))
+        .isTrue();
+    assertThat(
+            document
+                .path("components")
+                .path("schemas")
+                .path("Show")
+                .path("properties")
+                .has("originalPosterUrl"))
+        .isTrue();
     assertThat(paths.get("/api/v1/articles/{articleId}/entities/{entityId}").has("put")).isTrue();
     assertThat(paths.get("/api/v1/categories").has("get")).isTrue();
     assertThat(paths.get("/api/v1/categories").has("post")).isTrue();

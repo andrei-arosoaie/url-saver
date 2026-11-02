@@ -19,6 +19,38 @@ public class ConnectionPairs {
   private final ConnectionJobs jobs;
   private final java.time.Clock clock;
 
+  @Transactional
+  public void deleteEntity(UUID owner, UUID entity) {
+    // Article deletion locks its article before removing dependent rows. Match that order
+    // before touching reasons/links, including stale reasons awaiting reevaluation.
+    jdbc.queryForList(
+        """
+        select a.id from articles a where a.account_id=? and (
+          exists(select 1 from article_entities l where l.account_id=a.account_id and l.article_id=a.id and l.entity_id=?)
+          or exists(select 1 from article_connections c join connection_shared_entities r
+            on r.account_id=c.account_id and r.connection_id=c.id
+            where c.account_id=a.account_id and r.entity_id=? and (c.article_low_id=a.id or c.article_high_id=a.id)))
+        order by a.id for update
+        """,
+        UUID.class,
+        owner,
+        entity,
+        entity);
+    var affected =
+        jdbc.queryForList(
+            "select connection_id from connection_shared_entities where account_id=? and entity_id=? order by connection_id",
+            UUID.class,
+            owner,
+            entity);
+    jdbc.update(
+        "delete from connection_shared_entities where account_id=? and entity_id=?", owner, entity);
+    for (var connection : affected)
+      jdbc.update(
+          "delete from article_connections c where c.account_id=? and c.id=? and c.semantic_score is null and not exists (select 1 from connection_shared_entities r where r.account_id=c.account_id and r.connection_id=c.id)",
+          owner,
+          connection);
+  }
+
   public List<UUID> candidates(Job job) {
     return jdbc.queryForList(
         "select id from articles where account_id=? and id<>? and content is not null order by id",
@@ -30,6 +62,12 @@ public class ConnectionPairs {
   /** Both endpoint revisions stay locked throughout local evaluation and publication. */
   @Transactional
   public void evaluate(Job job, UUID other, ConnectionPolicy policy, Instant now) {
+    // Same lock order as entity mutations: account first, then pair and article rows.
+    // An evaluation cannot republish a shared reason while its entity is being deleted.
+    jdbc.queryForObject(
+        "select 1 from pg_advisory_xact_lock(hashtextextended(?,0))",
+        Integer.class,
+        "know-entities:" + job.accountId());
     var pair = pair(job.articleId(), other);
     lock(job.accountId(), pair);
     var endpoints =

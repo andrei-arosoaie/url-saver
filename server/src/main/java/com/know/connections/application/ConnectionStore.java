@@ -55,5 +55,7 @@ public interface ConnectionStore {
 
   void delete(UUID owner, UUID article);
 
+  void deleteEntity(UUID owner, UUID entity);
+
   int backfill(Profile profile, int size, Instant now);
 }

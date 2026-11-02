@@ -33,6 +33,16 @@ public class EntityService {
   }
 
   @Transactional
+  public void delete(UUID id, Long expectedVersion) {
+    var owner = writeOwner();
+    var entity = owned(owner, id);
+    version(expectedVersion, entity.version());
+    events.publishEvent(new EntityDeleting(owner, id));
+    var linked = store.delete(owner, id);
+    for (var article : linked) events.publishEvent(new ArticleEntitiesChanged(owner, article));
+  }
+
+  @Transactional
   public Details create(Create command) {
     validateCreate(command);
     var owner = writeOwner();

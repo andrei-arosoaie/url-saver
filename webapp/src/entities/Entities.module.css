@@ -623,6 +623,7 @@ html[data-theme="dark"] .done {
   color: #91e5ad;
 }
 .tvDetails {
+  font-size: 14px;
   display: grid;
   gap: 12px;
   padding-bottom: 20px;
@@ -644,6 +645,11 @@ html[data-theme="dark"] .done {
   cursor: pointer;
   padding: 8px 0;
 }
+.ratingSource {
+  font-size: 0.75em;
+  color: var(--muted);
+}
+
 .tvHeader {
   display: flex;
   gap: 14px;
@@ -689,7 +695,7 @@ html[data-theme="dark"] .done {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 280px;
+  max-height: min(360px, 45dvh);
   overflow: auto;
   border: 1px solid var(--line);
 }
@@ -705,9 +711,11 @@ html[data-theme="dark"] .done {
   background: var(--soft);
 }
 .autocomplete li img {
-  width: 30px;
-  height: 42px;
-  object-fit: cover;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 76px;
+  object-fit: contain;
+  border-radius: 4px;
 }
 .confirmation {
   width: min(480px, calc(100vw - 32px));
@@ -748,4 +756,97 @@ html[data-theme="dark"] .done {
 }
 :global([data-theme="dark"]) .newTooltip {
   color: #91e5ad;
+}
+
+.posterButton {
+  flex: 0 0 84px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.posterButton img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 7px;
+}
+.posterDialog {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--panel);
+  max-width: 95vw;
+  max-height: 95dvh;
+}
+.posterDialog::backdrop {
+  background: #000b;
+}
+.posterDialog img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 85vw;
+  max-height: 78dvh;
+  margin-top: 12px;
+  object-fit: contain;
+}
+.typeEyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  font-weight: 700;
+  color: var(--muted);
+}
+.tvHeading {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tvHeader .tvHeading h4 {
+  font-size: 1.8rem;
+  line-height: 1.15;
+  margin: 5px 0 10px;
+}
+.tvMetadata {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.tvRatingRow {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tvStatusRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 4px 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.autocomplete li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1101px) {
+  .tvWorkspace {
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 460px);
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .tvWorkspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 400px) {
+  .posterButton {
+    flex-basis: 64px;
+  }
+  .tvHeader .tvHeading h4 {
+    font-size: 1.5rem;
+  }
 }
