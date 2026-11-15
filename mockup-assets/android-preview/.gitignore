@@ -1,0 +1,3 @@
+# Superseded build chunks and local browser evidence; the self-contained mock is in design/.
+/assets/
+/proof/

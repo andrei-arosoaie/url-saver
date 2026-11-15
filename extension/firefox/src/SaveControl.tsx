@@ -25,7 +25,7 @@ export function SaveControl({
   extract: () => Capture;
   send: Send;
   pageUrl?: string;
-  onSignIn?: () => Promise<void>;
+  onSignIn?: () => Promise<void | { pending: boolean }>;
 }) {
   const [state, setState] = useState("ready");
   const [message, setMessage] = useState("");
@@ -253,6 +253,7 @@ export function SaveControl({
       <button
         className={`${styles.circle} ${styles[state] || ""}`}
         aria-label="Know: Save article"
+        title="Save this article and a visible-tab screenshot to Know"
         aria-busy={busy}
         disabled={busy && !dismissed}
         onClick={() => void click()}
@@ -303,13 +304,22 @@ export function SaveControl({
             <button
               onClick={() => {
                 void onSignIn()
-                  .then(() => {
+                  .then((result) => {
                     setNeedsSignIn(false);
-                    fail("Signed in. Click Save again to save this article.");
+                    fail(
+                      result?.pending
+                        ? "Finish signing in in the new Firefox tab, then return and click Save."
+                        : "Signed in. Click Save again to save this article.",
+                    );
                   })
-                  .catch(() =>
-                    fail("Sign-in was cancelled or failed. Please try again."),
-                  );
+                  .catch((error: unknown) => {
+                    setNeedsSignIn(true);
+                    fail(
+                      error instanceof Error
+                        ? error.message
+                        : "Could not start sign-in. Please try again.",
+                    );
+                  });
               }}
             >
               Sign in with Google

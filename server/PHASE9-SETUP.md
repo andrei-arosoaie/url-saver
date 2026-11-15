@@ -19,6 +19,13 @@ the extension, open `about:debugging#/runtime/this-firefox`, find Know, select I
 and run `browser.identity.getRedirectURL()` in its console. This callback belongs in
 Know's extension OAuth client configuration, **not** Google's redirect list.
 
+Extension 0.1.1 uses an ordinary Firefox tab on Android because the identity API
+is unavailable there. It derives the same callback from the stable add-on ID
+using Firefox's SHA-1 ID algorithm. For `know@url-saver.local`, that callback is
+`https://d4fe62558fa735f936131a5aea25882bdbee9374.extensions.allizom.org/`.
+The callback, client ID, PKCE requirements and Google's backend redirect remain
+unchanged; Android support does not require new production secrets or redirects.
+
 Reference: [Mozilla identity API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/identity).
 
 ## Prepared files

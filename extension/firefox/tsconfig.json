@@ -3,6 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "types": ["vitest/globals", "vite/client"]
+    "types": ["vitest/globals", "vite/client", "node"]
   }
 }

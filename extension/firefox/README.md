@@ -6,15 +6,38 @@ token handling run in the background; content scripts never receive credentials.
 Pending save/screenshot jobs bind to one sign-in session and cannot cross accounts.
 See [Phase 9 configuration](../../server/PHASE9-SETUP.md).
 
+### Android sign-in (since 0.1.1)
+
+Android uses a normal Firefox tab for Google sign-in because Firefox's identity
+APIs are not available there. Finish signing in in that tab; Know replaces the
+synthetic callback with a bundled waiting page and closes it after completion.
+Return to your article and click Save explicitly. The popup reports a pending
+login until credentials have actually been stored; signing in never saves a page.
+
+The background binds callbacks to the exact tab, callback origin/path and random
+state, and exchanges the one-use code using S256 PKCE. Pending state is kept in
+local extension storage for up to five minutes so login can resume after a
+background suspension. Cancellation and expiry clear the verifier. An interrupted
+token exchange requires a fresh login rather than replaying an uncertain code.
+Desktop retains its native identity flow. Both paths use the existing stable
+extension ID and callback; no Google or Render configuration change is required.
+
+Automated tests cover Android API avoidance, callback forgery, duplicate events,
+PKCE, timeout, cancellation, background restart and popup recovery. The publisher confirmed the 0.1.1 development artifact worked on Firefox Android.
+Exact device/browser versions were not recorded; signed-install validation and the
+new submission candidate still require their own device check.
+
 ## Android development package
 
 Run `build-development.cmd` from this folder, or `npm run package:dev`.
 Dependencies must be installed first with `npm ci`.
-Copy `.output/know-development.xpi` to your phone. This is an unsigned
+Copy `.output/know-development-0.1.2.xpi` to your phone. The packager includes the
+current version in the filename; `know-development.xpi` is a compatibility alias.
+This is an unsigned
 development package for Firefox Nightly with signature enforcement disabled.
 The script rebuilds the extension before creating the XPI; it does not sign or publish it.
 
-WXT, React, TypeScript and Mozilla Readability. Supports Firefox desktop and Android; private browsing is disabled.
+WXT, React, TypeScript and Mozilla Readability. Targets Firefox desktop and Android; private browsing is disabled.
 
 ## Build and check
 
@@ -28,6 +51,15 @@ npm run zip
 ```
 
 Build output: `.output/firefox-mv3/`. Generated OpenAPI types are build outputs, derived from `../../server/openapi/openapi.yaml`; they are not committed. All dependencies are pinned and package-lock.json is committed.
+
+For Mozilla submission use `npm run review:build`, `npm run review:audit`, then
+`npm run review:reproduce`. The complete reviewer-source ZIP includes the schema
+and tests. See [review build instructions](publishing/BUILD.md),
+[privacy draft](publishing/PRIVACY.md), [data map](publishing/DATA-MAP.md),
+[reviewer notes](publishing/REVIEWER-NOTES.md), and
+[warning disposition](publishing/SECURITY-REVIEW.md). Run `npm run review:ready`
+before upload; it deliberately refuses to call an incomplete publisher/privacy
+declaration submission-ready. These commands neither sign nor publish an add-on.
 
 Default server: `https://url-saver-server.onrender.com`. To target the local server, build with `VITE_API_ORIGIN=http://localhost:8080` in the environment. No secrets belong in build variables.
 
@@ -51,7 +83,7 @@ omit cookies and send the signed bearer token. No account ID is trusted from the
 
 Desktop: open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, select `.output/firefox-mv3/manifest.json`, then visit an ordinary HTTP/HTTPS article. Firefox-protected pages cannot host the control. The development extension ID is `know@url-saver.local`; signing remains deferred.
 
-Android: the build declares Android compatibility and Mozilla's required browsing-activity/website-content consent. Actual Android installation and device testing remain outstanding; unsigned desktop temporary loading does not establish Android compatibility.
+Android: the publisher confirmed the 0.1.1 development artifact worked on Firefox Android. The manifest declares website, browsing, authentication and identifying-information consent. This report is not a complete signed-device compatibility matrix.
 
 Automated checks cover extraction, viewport races, API contracts, message validation,
 persistent retry lifecycles, authentication state/rotation, queue session isolation and
@@ -79,7 +111,7 @@ Screenshot jobs retain the original PNG/capture ID across restarts and retry sep
 
 Firefox must grant the declared all-websites permission for viewport capture. The control and capture remain restricted to viewed HTTP/HTTPS tabs; private and protected pages are excluded. unlimitedStorage permits journaling native PNGs above the default storage quota. The transport ceiling is 20 MiB; oversized captures are marked missing.
 
-The development XPI targets Render by default. Screenshot support requires deploying the matching backend migration/configuration; this local implementation has not been deployed. Desktop Firefox 158.0.1 capture is verified at native 2560 x 1440 / 2x density, including exclusion and restoration of Know controls. Android capture and installed-extension restart verification remain the device review checkpoint.
+The development XPI targets Render by default. Screenshot support requires the matching backend migration/configuration. Desktop Firefox 158.0.1 capture is verified at native 2560 x 1440 / 2x density, including exclusion and restoration of Know controls. Android capture and installed-extension restart verification remain the device review checkpoint.
 
 ## Live provider and desktop verification
 

@@ -1,0 +1,31 @@
+package com.know.android
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.know.android.ui.KnowApp
+import com.know.android.ui.KnowTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            val model: LibraryViewModel = viewModel()
+            val state by model.state.collectAsStateWithLifecycle()
+            KnowTheme(state.theme) {
+                Surface(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    KnowApp(model.library, state, model::change)
+                }
+            }
+        }
+    }
+}

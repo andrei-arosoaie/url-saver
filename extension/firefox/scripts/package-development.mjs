@@ -13,12 +13,7 @@ function run(script, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run("node_modules/openapi-typescript/bin/cli.js", [
-  "../../server/openapi/openapi.yaml",
-  "-o",
-  "src/generated/api.d.ts",
-]);
-run("node_modules/wxt/bin/wxt.mjs", ["zip", "-b", "firefox", "--mv3"]);
+run("scripts/build-review.mjs", []);
 
 const { version } = JSON.parse(
   readFileSync(join(root, "package.json"), "utf8"),
@@ -33,6 +28,10 @@ if (packages.length !== 1) {
   );
 }
 const target = join(output, "know-development.xpi");
+const versionedTarget = join(output, `know-development-${version}.xpi`);
+copyFileSync(join(output, packages[0]), versionedTarget);
 copyFileSync(join(output, packages[0]), target);
-console.log(`\nReady to copy to your phone: ${target}`);
+console.log(
+  `\nReady to copy to your phone (version ${version}): ${versionedTarget}`,
+);
 console.log("Unsigned development package: install using Firefox Nightly.");

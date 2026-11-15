@@ -27,12 +27,19 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
-          node-version: 'lts/*'
+          node-version-file: 'extension/firefox/.node-version'
           cache: npm
           cache-dependency-path: extension/firefox/package-lock.json
+      - run: npm install --global npm@12.2.1
       - run: npm ci
       - run: npm run check
       - run: npm run validate
+      - name: Build the submission and complete reviewer sources
+        run: npm run review:build
+      - name: Audit actual AMO archive warnings and their upstream sources
+        run: npm run review:audit
+      - name: Prove a clean reviewer source-ZIP rebuild matches runtime files
+        run: npm run review:reproduce
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
         with:
           distribution: temurin

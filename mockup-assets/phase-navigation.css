@@ -17,3 +17,16 @@ header.know-navigation .planning-layers:focus-visible {
   outline: 2px solid var(--blue, var(--accent));
   outline-offset: 3px;
 }
+.phase-delivery-status {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  color: var(--accent);
+  font: 600 11px/1.4 system-ui, sans-serif;
+}
+.phase-delivery-status[data-status="planned"] {
+  color: var(--muted);
+}

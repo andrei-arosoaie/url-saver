@@ -1,14 +1,14 @@
 {
   "name": "know-firefox",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "package:dev": "node scripts/package-development.mjs",
     "generate": "openapi-typescript ../../server/openapi/openapi.yaml -o src/generated/api.d.ts",
     "postinstall": "wxt prepare",
     "build": "npm run generate && wxt build -b firefox --mv3",
-    "zip": "npm run generate && wxt zip -b firefox --mv3",
+    "zip": "npm run review:build",
     "dev": "wxt -b firefox --mv3",
     "typecheck": "npm run generate && wxt prepare && tsc --noEmit",
     "test": "vitest run",
@@ -17,7 +17,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build",
-    "validate": "addons-linter .output/firefox-mv3 --self-hosted"
+    "validate": "addons-linter .output/firefox-mv3 --self-hosted",
+    "review:build": "node scripts/build-review.mjs",
+    "review:audit": "node scripts/audit-review.mjs",
+    "review:reproduce": "node scripts/verify-review-build.mjs",
+    "review:ready": "node scripts/check-review-readiness.mjs"
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
@@ -25,9 +29,11 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@aklinker1/zero-zip": "1.0.1",
     "@eslint/js": "10.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
+    "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@wxt-dev/module-react": "1.2.2",
@@ -40,5 +46,9 @@
     "typescript-eslint": "8.72.0",
     "vitest": "5.0.5",
     "wxt": "0.21.4"
+  },
+  "engines": {
+    "node": "24.22.1",
+    "npm": "12.2.1"
   }
 }
