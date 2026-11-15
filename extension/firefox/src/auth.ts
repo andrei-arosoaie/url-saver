@@ -1,5 +1,11 @@
 import { browser } from "wxt/browser";
 import { ApiFailure } from "./api";
+import {
+  firefoxRedirect,
+  registerTabSignIn,
+  startTabSignIn,
+  tabSignInStatus,
+} from "./tabAuth";
 
 export const apiOrigin =
   import.meta.env.VITE_API_ORIGIN || "https://url-saver-server.onrender.com";
@@ -31,6 +37,7 @@ export async function currentSession() {
 }
 async function exchange(
   params: Record<string, string>,
+  current?: () => Promise<boolean>,
 ): Promise<Credentials | undefined> {
   const response = await fetch(new URL("/oauth2/token", apiOrigin), {
     method: "POST",
@@ -70,11 +77,13 @@ async function exchange(
     expiresAt: Date.now() + result.expires_in * 1000,
     session: payload.sid,
   };
+  if (current && !(await current()))
+    throw new Error("Sign-in expired. Please try again.");
   await browser.storage.local.set({ [storageKey]: credentials });
   return credentials;
 }
 export async function accessToken(expectedSession?: string) {
-  if (signingIn || signingOut)
+  if (signingIn || signingOut || (await tabSignInStatus()).signingIn)
     throw new ApiFailure(
       401,
       undefined,
@@ -116,9 +125,16 @@ export async function signIn() {
   if (signingIn) return signingIn;
   signingIn = (async () => {
     if (refreshing) await refreshing;
+    const platform = await browser.runtime.getPlatformInfo?.();
+    const useTab =
+      platform?.os === "android" ||
+      typeof browser.identity?.launchWebAuthFlow !== "function" ||
+      typeof browser.identity?.getRedirectURL !== "function";
     const verifier = random(),
-      state = random(),
-      redirect = browser.identity.getRedirectURL();
+      state = random();
+    const redirect = useTab
+      ? await firefoxRedirect(browser.runtime.id)
+      : browser.identity.getRedirectURL();
     const challenge = base64(
       new Uint8Array(
         await crypto.subtle.digest(
@@ -136,6 +152,15 @@ export async function signIn() {
       code_challenge_method: "S256",
       state,
     }).toString();
+    if (useTab) {
+      await startTabSignIn(url.href, {
+        redirect,
+        state,
+        verifier,
+        previousSession: await currentSession(),
+      });
+      return;
+    }
     const callback = await browser.identity.launchWebAuthFlow({
       url: url.href,
       interactive: true,
@@ -162,7 +187,7 @@ export async function signIn() {
   return signingIn;
 }
 export async function signOut() {
-  if (signingIn || signingOut)
+  if (signingIn || signingOut || (await tabSignInStatus()).signingIn)
     throw new Error("An account action is already in progress. Please wait.");
   signingOut = true;
   try {
@@ -187,4 +212,27 @@ export async function signOut() {
   } finally {
     signingOut = false;
   }
+}
+
+export async function authenticationStatus() {
+  const progress = await tabSignInStatus();
+  return { signedIn: !!(await currentSession()), ...progress };
+}
+export function registerAuthentication(changed: () => void) {
+  registerTabSignIn({
+    session: currentSession,
+    changed,
+    exchange: async (code, verifier, redirect, current) => {
+      const credentials = await exchange(
+        {
+          grant_type: "authorization_code",
+          code,
+          code_verifier: verifier,
+          redirect_uri: redirect,
+        },
+        current,
+      );
+      if (!credentials) throw new Error("Sign-in expired. Please try again.");
+    },
+  });
 }

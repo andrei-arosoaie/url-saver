@@ -109,6 +109,7 @@ export default defineContentScript({
             });
             if (!reply?.ok)
               throw new Error(reply?.message || "Sign-in failed.");
+            return { pending: !!reply.signingIn };
           }}
         />,
       );

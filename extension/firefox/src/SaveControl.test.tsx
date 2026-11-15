@@ -138,3 +138,32 @@ describe("Know save interaction", () => {
     ).toBeNull();
   });
 });
+
+it("preserves the sign-in failure reason and leaves an explicit retry available", async () => {
+  const send = vi
+    .fn<Send>()
+    .mockResolvedValue({ ok: false, status: 401, message: "Sign in to Know." });
+  const signIn = vi
+    .fn()
+    .mockRejectedValue(new Error("Could not open the sign-in tab."));
+  render(<SaveControl extract={() => value} send={send} onSignIn={signIn} />);
+  fireEvent.click(screen.getByRole("button", { name: "Know: Save article" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Sign in with Google" }),
+  );
+  await screen.findByText("Could not open the sign-in tab.");
+  expect(
+    screen.getByRole("button", { name: "Sign in with Google" }),
+  ).toBeTruthy();
+});
+
+it("renders HTML-looking feedback as text rather than creating executable DOM", async () => {
+  const message = '<img src=x onerror="alert(1)">';
+  const send = vi
+    .fn<Send>()
+    .mockResolvedValue({ ok: false, status: 400, message });
+  render(<SaveControl extract={() => value} send={send} />);
+  fireEvent.click(screen.getByRole("button", { name: "Know: Save article" }));
+  await screen.findByText(message);
+  expect(document.querySelector("img[onerror]")).toBeNull();
+});

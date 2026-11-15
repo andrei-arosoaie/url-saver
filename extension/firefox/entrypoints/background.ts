@@ -17,6 +17,8 @@ import {
   currentSession,
   signIn,
   signOut,
+  authenticationStatus,
+  registerAuthentication,
 } from "../src/auth";
 export default defineBackground(() => {
   function createServices() {
@@ -47,6 +49,9 @@ export default defineBackground(() => {
     return { api, queue, screenshots, binding };
   }
   let services = createServices();
+  registerAuthentication(() => {
+    services = createServices();
+  });
   let generation = 0;
   browser.tabs.onActivated.addListener(() => {
     generation++;
@@ -187,11 +192,11 @@ export default defineBackground(() => {
         return;
     } else if (!sender.url?.startsWith(browser.runtime.getURL(""))) return;
     try {
-      if (action === "status") return { signedIn: !!(await currentSession()) };
+      if (action === "status") return authenticationStatus();
       if (action === "signIn") await signIn();
       else if (action === "signOut") await signOut();
       services = createServices();
-      return { ok: true };
+      return { ok: true, ...(await authenticationStatus()) };
     } catch (error) {
       return {
         ok: false,
