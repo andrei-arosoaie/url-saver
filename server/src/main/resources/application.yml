@@ -20,7 +20,7 @@ spring:
       fail-on-unknown-properties: true
       accept-float-as-int: false
   config:
-    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml,optional:file:./config/embedding-secrets.yml,optional:file:/etc/secrets/embedding-secrets.yml,file:./config/auth-secrets.yml
+    import: file:./config/secrets.yml,optional:file:./config/imagekit-secrets.yml,optional:file:./config/identification-secrets.yml,optional:file:./config/embedding-secrets.yml,optional:file:/etc/secrets/embedding-secrets.yml,optional:file:./config/movie-secrets.yml,optional:file:/etc/secrets/movie-secrets.yml,file:./config/auth-secrets.yml
   servlet:
     multipart:
       max-file-size: 20MB
