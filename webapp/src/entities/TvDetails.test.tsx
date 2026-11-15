@@ -106,7 +106,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-function fixture(start: Details = initial) {
+function fixture(start: Details = initial, seasonResponse?: Promise<void>) {
   let data = structuredClone(start);
   const mutations: { path: string; body: Record<string, unknown> }[] = [];
   const fetcher = vi.fn(
@@ -165,7 +165,8 @@ function fixture(start: Details = initial) {
           debounceMs: 300,
           pageSize: 8,
         };
-      else if (path.endsWith("/seasons"))
+      else if (path.endsWith("/seasons")) {
+        if (seasonResponse) await seasonResponse;
         result = {
           items: data.metadata.fetchedAt
             ? [
@@ -189,7 +190,7 @@ function fixture(start: Details = initial) {
             : [],
           metadataStatus: "READY",
         };
-      else if (path.endsWith("/episodes"))
+      } else if (path.endsWith("/episodes"))
         result = {
           items: path.includes("/20/")
             ? [episodes[2]]
@@ -330,15 +331,31 @@ it("keeps position separate, confirms bulk marking and disables seasons without 
   expect(mutations).toHaveLength(1);
 });
 it("excludes fully watched seasons and watched episodes from Last watched but retains the episode browser", async () => {
-  fixture({ ...initial, watchedCount: 1, canMarkSeen: true });
+  let releaseSeasons!: () => void;
+  const seasonResponse = new Promise<void>((resolve) => {
+    releaseSeasons = resolve;
+  });
+  fixture({ ...initial, watchedCount: 1, canMarkSeen: true }, seasonResponse);
   await screen.findByText("Show · My label");
   await screen.findByText("Caught up with all released episodes");
   expect(screen.queryByRole("group", { name: "Last watched" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Mark show seen" })).toBeNull();
   fireEvent.click(screen.getByText(/Episodes · Season/));
+  const browser = screen.getByLabelText("Browse season");
   expect(
-    within(screen.getByLabelText("Browse season")).getByText("Season 1"),
+    within(browser).queryByRole("option", { name: "Season 1" }),
+  ).toBeNull();
+  releaseSeasons();
+  expect(
+    await within(browser).findByRole("option", { name: "Season 1" }),
   ).toBeTruthy();
+  expect(
+    (
+      (await screen.findByRole("checkbox", {
+        name: /Pilot/,
+      })) as HTMLInputElement
+    ).checked,
+  ).toBe(true);
 });
 it("allows explicit unknown-date watching while blocking future episodes", async () => {
   const { mutations } = fixture();
